@@ -1,0 +1,142 @@
+{
+    "1": {
+        "relevance": 0.2,
+        "complexity": 0.1,
+        "change_nature": "Minor"
+    },
+    "2": {
+        "relevance": 0.2,
+        "complexity": 0.1,
+        "change_nature": "Minor"
+    },
+    "3": {
+        "relevance": 0.7,
+        "complexity": 0.6,
+        "change_nature": "Moderate Refactoring"
+    },
+    "4": {
+        "relevance": 0.9,
+        "complexity": 0.8,
+        "change_nature": "Significant Core Change"
+    },
+    "5": {
+        "relevance": 0.9,
+        "complexity": 0.7,
+        "change_nature": "Significant Bug Fix"
+    },
+    "6": {
+        "relevance": 1.0,
+        "complexity": 0.8,
+        "change_nature": "Critical Deprecation"
+    },
+    "7": {
+        "relevance": 1.0,
+        "complexity": 0.8,
+        "change_nature": "Critical Deprecation"
+    },
+    "8": {
+        "relevance": 0.5,
+        "complexity": 0.3,
+        "change_nature": "Minor Enhancement"
+    },
+    "9": {
+        "relevance": 1.0,
+        "complexity": 0.8,
+        "change_nature": "Critical Deprecation"
+    },
+    "10": {
+        "relevance": 0.1,
+        "complexity": 0.1,
+        "change_nature": "None"
+    },
+    "11": {
+        "relevance": 0.1,
+        "complexity": 0.1,
+        "change_nature": "None"
+    },
+    "12": {
+        "relevance": 0.6,
+        "complexity": 0.5,
+        "change_nature": "Moderate"
+    },
+    "13": {
+        "relevance": 0.6,
+        "complexity": 0.5,
+        "change_nature": "Moderate Enhancement"
+    },
+    "14": {
+        "relevance": 0.1,
+        "complexity": 0.1,
+        "change_nature": "None"
+    },
+    "15": {
+        "relevance": 1.0,
+        "complexity": 0.8,
+        "change_nature": "Critical Deprecation"
+    },
+    "16": {
+        "relevance": 0.1,
+        "complexity": 0.1,
+        "change_nature": "None"
+    },
+    "17": {
+        "relevance": 1.0,
+        "complexity": 0.9,
+        "change_nature": "Major Enhancement"
+    },
+    "18": {
+        "relevance": 0.9,
+        "complexity": 0.7,
+        "change_nature": "Significant Bug Fix"
+    },
+    "19": {
+        "relevance": 0.3,
+        "complexity": 0.2,
+        "change_nature": "Minor"
+    },
+    "20": {
+        "relevance": 1.0,
+        "complexity": 0.9,
+        "change_nature": "Major Enhancement"
+    },
+    "21": {
+        "relevance": 0.7,
+        "complexity": 0.6,
+        "change_nature": "Moderate"
+    },
+    "22": {
+        "relevance": 0.7,
+        "complexity": 0.6,
+        "change_nature": "Moderate"
+    },
+    "23": {
+        "relevance": 0.1,
+        "complexity": 0.1,
+        "change_nature": "None"
+    },
+    "24": {
+        "relevance": 0.9,
+        "complexity": 0.8,
+        "change_nature": "Significant Enhancement"
+    },
+    "25": {
+        "relevance": 0.9,
+        "complexity": 0.8,
+        "change_nature": "Significant Enhancement"
+    },
+    "26": {
+        "relevance": 0.9,
+        "complexity": 0.8,
+        "change_nature": "Significant Enhancement"
+    },
+    "27": {
+        "relevance": 0.8,
+        "complexity": 0.9,
+        "change_nature": "Moderate Refactoring"
+    },
+    "28": {
+        "relevance": 0.9,
+        "complexity": 0.9,
+        "change_nature": "Significant Core Change"
+    }
+}

@@ -1,0 +1,170 @@
+[
+    {
+        "test_id": "1",
+        "magnitude": 0.17,
+        "phase": 5.8643,
+        "original_semantics": "Minor"
+    },
+    {
+        "test_id": "2",
+        "magnitude": 0.17,
+        "phase": 5.8643,
+        "original_semantics": "Minor"
+    },
+    {
+        "test_id": "3",
+        "magnitude": 0.67,
+        "phase": 1.3963,
+        "original_semantics": "Moderate Refactoring"
+    },
+    {
+        "test_id": "4",
+        "magnitude": 0.87,
+        "phase": 6.1261,
+        "original_semantics": "Significant Core Change"
+    },
+    {
+        "test_id": "5",
+        "magnitude": 0.84,
+        "phase": 1.501,
+        "original_semantics": "Significant Bug Fix"
+    },
+    {
+        "test_id": "6",
+        "magnitude": 0.94,
+        "phase": 4.1713,
+        "original_semantics": "Critical Deprecation"
+    },
+    {
+        "test_id": "7",
+        "magnitude": 0.94,
+        "phase": 4.1713,
+        "original_semantics": "Critical Deprecation"
+    },
+    {
+        "test_id": "8",
+        "magnitude": 0.44,
+        "phase": 4.8346,
+        "original_semantics": "Minor Enhancement"
+    },
+    {
+        "test_id": "9",
+        "magnitude": 0.94,
+        "phase": 4.1713,
+        "original_semantics": "Critical Deprecation"
+    },
+    {
+        "test_id": "10",
+        "magnitude": 0.1,
+        "phase": 0.0,
+        "original_semantics": "None"
+    },
+    {
+        "test_id": "11",
+        "magnitude": 0.1,
+        "phase": 0.0,
+        "original_semantics": "None"
+    },
+    {
+        "test_id": "12",
+        "magnitude": 0.57,
+        "phase": 3.4907,
+        "original_semantics": "Moderate"
+    },
+    {
+        "test_id": "13",
+        "magnitude": 0.57,
+        "phase": 0.0175,
+        "original_semantics": "Moderate Enhancement"
+    },
+    {
+        "test_id": "14",
+        "magnitude": 0.1,
+        "phase": 0.0,
+        "original_semantics": "None"
+    },
+    {
+        "test_id": "15",
+        "magnitude": 0.94,
+        "phase": 4.1713,
+        "original_semantics": "Critical Deprecation"
+    },
+    {
+        "test_id": "16",
+        "magnitude": 0.1,
+        "phase": 0.0,
+        "original_semantics": "None"
+    },
+    {
+        "test_id": "17",
+        "magnitude": 0.97,
+        "phase": 4.9218,
+        "original_semantics": "Major Enhancement"
+    },
+    {
+        "test_id": "18",
+        "magnitude": 0.84,
+        "phase": 1.501,
+        "original_semantics": "Significant Bug Fix"
+    },
+    {
+        "test_id": "19",
+        "magnitude": 0.27,
+        "phase": 5.8643,
+        "original_semantics": "Minor"
+    },
+    {
+        "test_id": "20",
+        "magnitude": 0.97,
+        "phase": 4.9218,
+        "original_semantics": "Major Enhancement"
+    },
+    {
+        "test_id": "21",
+        "magnitude": 0.67,
+        "phase": 3.4907,
+        "original_semantics": "Moderate"
+    },
+    {
+        "test_id": "22",
+        "magnitude": 0.67,
+        "phase": 3.4907,
+        "original_semantics": "Moderate"
+    },
+    {
+        "test_id": "23",
+        "magnitude": 0.1,
+        "phase": 0.0,
+        "original_semantics": "None"
+    },
+    {
+        "test_id": "24",
+        "magnitude": 0.87,
+        "phase": 5.8992,
+        "original_semantics": "Significant Enhancement"
+    },
+    {
+        "test_id": "25",
+        "magnitude": 0.87,
+        "phase": 5.8992,
+        "original_semantics": "Significant Enhancement"
+    },
+    {
+        "test_id": "26",
+        "magnitude": 0.87,
+        "phase": 5.8992,
+        "original_semantics": "Significant Enhancement"
+    },
+    {
+        "test_id": "27",
+        "magnitude": 0.83,
+        "phase": 1.3963,
+        "original_semantics": "Moderate Refactoring"
+    },
+    {
+        "test_id": "28",
+        "magnitude": 0.9,
+        "phase": 6.1261,
+        "original_semantics": "Significant Core Change"
+    }
+]

@@ -1,15 +1,16 @@
-name: QI-PSO Optimization
+name: LLM Semantic Analysis
 
 on:
     repository_dispatch:
-        types: [qi-pso]
+        types: [prompt-llm]
 
 jobs:
-    optimize-and-report:
+    analyze-intent:
         runs-on: ubuntu-latest
         permissions:
-            contents: read
-            issues: write # Required to create the final report issue
+            contents: write
+        env:
+            GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
         steps:
             - name: Checkout Repository
@@ -23,22 +24,19 @@ jobs:
                   python-version: "3.11"
 
             - name: Install Dependencies
-              run: pip install numpy
+              run: pip install google-generativeai
 
-            - name: Run QI-PSO Optimization
-              id: qpso
+            - name: Prompt Gemini 3.0
               run: |
-                  # Reads 'tca.json' and performs PSO with Interference-Aware Fitness Function.
-                  # Generates the optimal test order.
-                  # The script should output the result to a file named 'prioritization_report.md'
-                  python scripts/run_qpso.py
+                  # This script should read 'dff.txt' and output 'llm.txt'
+                  # 'llm.txt' contains the semantic summary and relevance scoring
+                  python scripts/prompt_gemini.py
 
-            - name: Create Prioritization Issue
-              uses: peter-evans/create-issue-from-file@v5
-              with:
-                  title: "QI-PSO Test Case Prioritization Results"
-                  content-filepath: ./prioritization_report.md
-                  labels: |
-                      prioritization-report
-                      automated
-                  assignees: ${{ github.actor }}
+            - name: Commit LLM Response
+              run: |
+                  git config --global user.name 'JTopas Automation'
+                  git config --global user.email 'automation@jtopas.local'
+                  git add llm.txt
+                  # This commit triggers GAS to detect 'llm.txt' and fire 'calc-mpltd'
+                  git commit -m "chore: update llm.txt [skip ci]"
+                  git push

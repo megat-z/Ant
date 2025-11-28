@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written
  *    permission, please contact apache@apache.org.
@@ -114,7 +114,7 @@ public class Filter extends Task {
 
             Project proj = getProject();
 
-            Enumeration enum = props.propertyNames();		
+            Enumeration enum = props.propertyNames();
             while (enum.hasMoreElements()) {
                 String strPropName = (String)enum.nextElement();
                 String strValue = props.getProperty(strPropName);

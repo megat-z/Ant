@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written
  *    permission, please contact apache@apache.org.
@@ -64,7 +64,7 @@ import java.io.File;
 /**
  * JUnit 3 testcases for org.apache.tools.ant.CommandlineJava
  *
- * @author Stefan Bodewig <a href="mailto:stefan.bodewig@megabit.net">stefan.bodewig@megabit.net</a> 
+ * @author <a href="mailto:stefan.bodewig@epost.de">Stefan Bodewig</a> 
  */
 public class CommandlineJavaTest extends TestCase {
 
@@ -77,6 +77,7 @@ public class CommandlineJavaTest extends TestCase {
     public void setUp() {
         project = new Project();
         project.setBasedir(".");
+        project.setProperty("build.sysclasspath", "ignore");
     }
 
     public void testGetCommandline() {
@@ -91,9 +92,14 @@ public class CommandlineJavaTest extends TestCase {
         assertEquals("no classpath", "junit.textui.TestRunner", s[2]);
         assertEquals("no classpath", 
                      "org.apache.tools.ant.CommandlineJavaTest", s[3]);
+        try {
+            CommandlineJava c2 = (CommandlineJava) c.clone();
+        } catch (NullPointerException ex) {
+            fail("cloning should work without classpath specified");
+        }
 
-        c.createClasspath(project).setLocation(new File("junit.jar"));
-        c.createClasspath(project).setLocation(new File("ant.jar"));
+        c.createClasspath(project).setLocation(project.resolveFile("lib/optional/junit.jar"));
+        c.createClasspath(project).setLocation(project.resolveFile("bootstrap/lib/ant.jar"));
         s = c.getCommandline();
         assertEquals("with classpath", 6, s.length);
         assertEquals("with classpath", "java", s[0]);

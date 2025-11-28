@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written
  *    permission, please contact apache@apache.org.
@@ -160,26 +160,29 @@ public abstract class Task {
      *  what we are doing.
      */
     public void setDescription( String desc ) {
-	description=desc;
+        description=desc;
     }
 
     public String getDescription() {
-	return description;
+        return description;
     }
 
     /**
-     * Called by the project to let the task initialize properly. Normally it does nothing.
+     * Called by the project to let the task initialize properly. 
      *
      * @throws BuildException if someting goes wrong with the build
      */
     public void init() throws BuildException {}
 
     /**
-     * Called by the project to let the task do it's work. Normally it does nothing.
+     * Called by the project to let the task do it's work. This method may be 
+     * called more than once, if the task is invoked more than once. For example, 
+     * if target1 and target2 both depend on target3, then running 
+     * "ant target1 target2" will run all tasks in target3 twice.
      *
      * @throws BuildException if someting goes wrong with the build
      */
-    public void execute() throws BuildException {};
+    public void execute() throws BuildException {}
 
     /**
      * Returns the file location where this task was defined.

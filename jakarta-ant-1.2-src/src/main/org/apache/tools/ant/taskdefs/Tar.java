@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written 
  *    permission, please contact apache@apache.org.
@@ -55,32 +55,82 @@
 package org.apache.tools.ant.taskdefs;
 
 import java.io.*;
+import java.util.*;
 import org.apache.tools.ant.*;
+import org.apache.tools.ant.util.*;
 import org.apache.tools.tar.*;
+import org.apache.tools.ant.types.*;
 
 /**
  * Creates a TAR archive.
  *
  * @author Stefano Mazzocchi <a href="mailto:stefano@apache.org">stefano@apache.org</a>
+ * @author <a href="mailto:stefan.bodewig@epost.de">Stefan Bodewig</a>
  */
 
 public class Tar extends MatchingTask {
 
+    // permissable values for longfile attribute
+    static public final String WARN = "warn";
+    static public final String FAIL = "fail";
+    static public final String TRUNCATE = "truncate";
+    static public final String GNU = "gnu";
+    static public final String OMIT = "omit";
+
+    private String[] validModes = new String[] {WARN, FAIL, TRUNCATE, GNU, OMIT};
+
     File tarFile;
     File baseDir;
+    
+    String longFileMode = WARN;
+    
+    Vector filesets = new Vector();
+    Vector fileSetFiles = new Vector();
+    
+    /**
+     * Indicates whether the user has been warned about long files already.
+     */
+    private boolean longWarningGiven = false;
+
+    public TarFileSet createTarFileSet() {
+        TarFileSet fileset = new TarFileSet();
+        filesets.addElement(fileset);
+        return fileset;
+    }
+    
     
     /**
      * This is the name/location of where to create the tar file.
      */
-    public void setTarfile(String tarFilename) {
-        tarFile = project.resolveFile(tarFilename);
+    public void setTarfile(File tarFile) {
+        this.tarFile = tarFile;
     }
     
     /**
      * This is the base directory to look in for things to tar.
      */
-    public void setBasedir(String baseDirname) {
-        baseDir = project.resolveFile(baseDirname);
+    public void setBasedir(File baseDir) {
+        this.baseDir = baseDir;
+    }
+    
+    /**
+     * Set how to handle long files.
+     *
+     * Allowable values are
+     *   truncate - paths are truncated to the maximum length
+     *   fail - patsh greater than the maximim cause a build exception
+     *   warn - paths greater than the maximum cause a warning and GNU is used
+     *   gnu - GNU extensions are used for any paths greater than the maximum.
+     *   omit - paths greater than the maximum are omitted from the archive
+     */
+    public void setLongfile(String mode) {
+        for (int i = 0; i < validModes.length; ++i) {
+            if (mode.equalsIgnoreCase(validModes[i])) {
+                this.longFileMode = mode;
+                return;
+            }
+        }
+        throw new BuildException("The longfile value " + mode + " is not a valid value");
     }
 
     public void execute() throws BuildException {
@@ -89,53 +139,134 @@ public class Tar extends MatchingTask {
                                      location);
         }
 
-        if (baseDir == null) {
-            throw new BuildException("basedir attribute must be set!", 
+        if (tarFile.exists() && tarFile.isDirectory()) {
+            throw new BuildException("tarfile is a directory!", 
                                      location);
         }
-        if (!baseDir.exists()) {
-            throw new BuildException("basedir does not exist!", location);
+
+        if (tarFile.exists() && !tarFile.canWrite()) {
+            throw new BuildException("Can not write to the specified tarfile!", 
+                                     location);
         }
 
-        log("Building tar: "+ tarFile.getAbsolutePath());
+        if (baseDir != null) {
+            if (!baseDir.exists()) {
+                throw new BuildException("basedir does not exist!", location);
+            }
+            
+            // add the main fileset to the list of filesets to process.
+            TarFileSet mainFileSet = new TarFileSet(fileset);
+            mainFileSet.setDir(baseDir);
+            mainFileSet.setDefaultexcludes(useDefaultExcludes);
+            filesets.addElement(mainFileSet);
+        }
+        
+        if (filesets.size() == 0) {
+            throw new BuildException("You must supply either a basdir attribute or some nested filesets.", 
+                                     location);
+        }
+        
+        // check if tr is out of date with respect to each
+        // fileset
+        boolean upToDate = true;
+        for (Enumeration e = filesets.elements(); e.hasMoreElements();) {
+            TarFileSet fs = (TarFileSet)e.nextElement();
+            String[] files = fs.getFiles(project);
+            
+            if (!archiveIsUpToDate(files)) {
+                upToDate = false;
+            }
+            
+            for (int i = 0; i < files.length; ++i) {
+                if (tarFile.equals(new File(fs.getDir(project), files[i]))) {
+                    throw new BuildException("A tar file cannot include itself", location);
+                }
+            }
+        }
 
-        DirectoryScanner ds = super.getDirectoryScanner(baseDir);
+        if (upToDate) {
+            log("Nothing to do: "+tarFile.getAbsolutePath()+" is up to date.",
+                Project.MSG_INFO);
+            return;
+        }
 
-        String[] files = ds.getIncludedFiles();
+        log("Building tar: "+ tarFile.getAbsolutePath(), Project.MSG_INFO);
 
         TarOutputStream tOut = null;
         try {
             tOut = new TarOutputStream(new FileOutputStream(tarFile));
             tOut.setDebug(true);
-
-            for (int i = 0; i < files.length; i++) {
-                File f = new File(baseDir,files[i]);
-                String name = files[i].replace(File.separatorChar,'/');
-                tarFile(f, tOut, name);
+            if (longFileMode.equalsIgnoreCase(TRUNCATE)) {
+                tOut.setLongFileMode(TarOutputStream.LONGFILE_TRUNCATE);
+            }
+            else if (longFileMode.equalsIgnoreCase(FAIL) ||
+                     longFileMode.equalsIgnoreCase(OMIT)) {
+                tOut.setLongFileMode(TarOutputStream.LONGFILE_ERROR);
+            }
+            else {
+                // warn or GNU
+                tOut.setLongFileMode(TarOutputStream.LONGFILE_GNU);
+            }
+        
+            longWarningGiven = false;
+            for (Enumeration e = filesets.elements(); e.hasMoreElements();) {
+                TarFileSet fs = (TarFileSet)e.nextElement();
+                String[] files = fs.getFiles(project);
+                for (int i = 0; i < files.length; i++) {
+                    File f = new File(baseDir,files[i]);
+                    String name = files[i].replace(File.separatorChar,'/');
+                    tarFile(f, tOut, name, fs);
+                }
             }
         } catch (IOException ioe) {
             String msg = "Problem creating TAR: " + ioe.getMessage();
             throw new BuildException(msg, ioe, location);
-	} finally {
-	    if (tOut != null) {
-	        try {
+        } finally {
+            if (tOut != null) {
+                try {
                     // close up
-	            tOut.close();
-	        }
-	        catch (IOException e) {}
-	    }
+                    tOut.close();
+                }
+                catch (IOException e) {}
+            }
         }
     }
 
-    protected void tarFile(File file, TarOutputStream tOut, String vPath)
+    protected void tarFile(File file, TarOutputStream tOut, String vPath,
+                           TarFileSet tarFileSet)
         throws IOException
     {
         FileInputStream fIn = new FileInputStream(file);
 
         try {
+            if (vPath.length() >= TarConstants.NAMELEN) {
+                if (longFileMode.equalsIgnoreCase(OMIT)) {
+                    log("Omitting: "+ vPath, Project.MSG_INFO);
+                    return;
+                } else if (longFileMode.equalsIgnoreCase(WARN)) {
+                    log("Entry: "+ vPath + " longer than " + 
+                        TarConstants.NAMELEN + " characters.", Project.MSG_WARN);
+                    if (!longWarningGiven) {                        
+                        log("Resulting tar file can only be processed successfully"
+                            + " by GNU compatible tar commands", Project.MSG_WARN);
+                        longWarningGiven = true;
+                    }
+                } else if (longFileMode.equalsIgnoreCase(FAIL)) {
+                    throw new BuildException(
+                        "Entry: "+ vPath + " longer than " + 
+                        TarConstants.NAMELEN + "characters.", location);
+                }
+            }
+
             TarEntry te = new TarEntry(vPath);
             te.setSize(file.length());
             te.setModTime(file.lastModified());
+            if (!file.isDirectory()) {
+                te.setMode(tarFileSet.getMode());
+            }
+            te.setUserName(tarFileSet.getUserName());
+            te.setGroupName(tarFileSet.getGroup());
+            
             tOut.putNextEntry(te);
             
             byte[] buffer = new byte[8 * 1024];
@@ -149,5 +280,64 @@ public class Tar extends MatchingTask {
         } finally {
             fIn.close();
         }
+    }
+
+    protected boolean archiveIsUpToDate(String[] files) {
+        SourceFileScanner sfs = new SourceFileScanner(this);
+        MergingMapper mm = new MergingMapper();
+        mm.setTo(tarFile.getAbsolutePath());
+        return sfs.restrict(files, baseDir, null, mm).length == 0;
+    }
+
+    static public class TarFileSet extends FileSet {
+        private String[] files = null;
+        
+        private int mode = 0100644;
+        
+        private String userName = "";
+        private String groupName = "";
+        
+           
+        public TarFileSet(FileSet fileset) {
+            super(fileset);
+        }
+        
+        public TarFileSet() {
+            super();
+        }
+        
+        public String[] getFiles(Project p) {
+            if (files == null) {
+                DirectoryScanner ds = getDirectoryScanner(p);
+                files = ds.getIncludedFiles();
+            }
+            
+            return files;
+        }
+        
+        public void setMode(String octalString) {
+            this.mode = 0100000 | Integer.parseInt(octalString, 8);
+        }
+            
+        public int getMode() {
+            return mode;
+        }
+        
+        public void setUserName(String userName) {
+            this.userName = userName;
+        }
+        
+        public String getUserName() {
+            return userName;
+        }
+        
+        public void setGroup(String groupName) {
+            this.groupName = groupName;
+        }
+        
+        public String getGroup() {
+            return groupName;
+        }
+        
     }
 }

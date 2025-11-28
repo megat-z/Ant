@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written
  *    permission, please contact apache@apache.org.
@@ -59,11 +59,13 @@ import org.apache.tools.ant.*;
 /**
  *
  * @author <a href="mailto:rubys@us.ibm.com">Sam Ruby</a>
- * @version $Revision: 1.1 $ $Date: 2000/06/23 16:47:04 $
+ * @version $Revision: 1.3 $ $Date: 2001/01/03 14:18:31 $
  */
 public interface XSLTLiaison {
 
     public void setStylesheet(String fileName) throws Exception;
+
+    public void addParam(String name, String expression) throws Exception;
 
     public void transform(String infile, String outfile) throws Exception;
 

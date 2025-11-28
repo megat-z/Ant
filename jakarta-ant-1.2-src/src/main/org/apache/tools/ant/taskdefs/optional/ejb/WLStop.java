@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written 
  *    permission, please contact apache@apache.org.
@@ -72,7 +72,7 @@ public class WLStop extends Task {
     /**
      * The classpath to be used. It must contains the weblogic.Admin class.
      */
-    private String classpath;
+    private Path classpath;
 
     /**
      * The weblogic username to use to request the shutdown.
@@ -95,6 +95,12 @@ public class WLStop extends Task {
     private int delay = 0;
     
     /**
+     * The location of the BEA Home under which this server is run.
+     * WL6 only
+     */
+    private File beaHome = null;
+
+    /**
      * Do the work.
      *
      * The work is actually done by creating a separate JVM to run the weblogic admin task
@@ -110,16 +116,24 @@ public class WLStop extends Task {
         if (serverURL == null) {
             throw new BuildException("The url of the weblogic server must be provided.");
         }
-
-        String execClassPath = project.translatePath(classpath);
         
         Java weblogicAdmin = (Java)project.createTask("java");
         weblogicAdmin.setFork(true);
         weblogicAdmin.setClassname("weblogic.Admin");
-        String args = serverURL + " SHUTDOWN " + username + " " + password + " " + delay;
+        String args;
+        
+        if (beaHome == null) {
+            args = serverURL + " SHUTDOWN " + username + " " + password + " " + delay;
+        }
+        else {
+            args = " -url " + serverURL + 
+                   " -username " + username +
+                   " -password " + password +
+                   " SHUTDOWN " + " " + delay;
+        }            
 
         weblogicAdmin.setArgs(args);
-        weblogicAdmin.setClasspath(new Path(project, execClassPath));                         
+        weblogicAdmin.setClasspath(classpath);                         
         weblogicAdmin.execute();
     }
     
@@ -128,10 +142,20 @@ public class WLStop extends Task {
      *
      * @param s the classpath to use when executing the weblogic admin task.
      */
-    public void setClasspath(String s) {
-        this.classpath = project.translatePath(s);
+    public void setClasspath(Path path) {
+        this.classpath = path;
     }
     
+    /**
+     * Add the classpath for the user classes
+     */
+    public Path createClasspath() {
+        if (classpath == null) {
+            classpath = new Path(project);
+        }
+        return classpath.createPath();
+    }
+
     /**
      * Set the username to use to request shutdown of the server.
      *
@@ -168,4 +192,15 @@ public class WLStop extends Task {
     public void setDelay(String s) {
         delay = Integer.parseInt(s);
     }
+
+    /**
+     * The location of the BEA Home.
+     *
+     * @param beaHome the BEA Home directory.
+     *
+     */
+    public void setBEAHome(File beaHome) {
+        this.beaHome = beaHome;
+    }
+    
 }

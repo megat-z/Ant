@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written
  *    permission, please contact apache@apache.org.
@@ -65,9 +65,9 @@ import java.io.File;
 /**
  * JUnit 3 testcases for org.apache.tools.ant.types.PatternSet.
  *
- * <p>This doesn't actually test much, mainly reference handling.
+ * <p>This doesn't actually test much, mainly reference handling.</p>
  *
- * @author <a href="mailto:stefan.bodewig@megabit.net">Stefan Bodewig</a> 
+ * @author <a href="mailto:stefan.bodewig@epost.de">Stefan Bodewig</a> 
  */
 
 public class PatternSetTest extends TestCase {

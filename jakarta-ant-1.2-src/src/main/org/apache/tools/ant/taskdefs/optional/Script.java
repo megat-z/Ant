@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written 
  *    permission, please contact apache@apache.org.
@@ -51,13 +51,12 @@
  * information on the Apache Software Foundation, please see
  * <http://www.apache.org/>.
  */
-
 package org.apache.tools.ant.taskdefs.optional;
 
-import org.apache.tools.ant.*;
+import com.ibm.bsf.*;
 import java.io.*;
 import java.util.*;
-import com.ibm.bsf.*;
+import org.apache.tools.ant.*;
 
 /**
  * Execute a script
@@ -76,7 +75,7 @@ public class Script extends Task {
         for (Enumeration e=dictionary.keys(); e.hasMoreElements(); ) {
             String key = (String)e.nextElement();
 
-	    boolean isValid = key.length()>0 &&
+            boolean isValid = key.length()>0 &&
                 Character.isJavaIdentifierStart(key.charAt(0));
 
             for (int i=1; isValid && i<key.length(); i++)
@@ -109,7 +108,7 @@ public class Script extends Task {
             // execute the script
             manager.exec(language, "<ANT>", 0, 0, script);
         } catch (BSFException be) {
-	    Throwable t = be;
+            Throwable t = be;
             Throwable te = be.getTargetException();
             if (te != null) {
                 if  (te instanceof BuildException) {
@@ -128,7 +127,7 @@ public class Script extends Task {
      * @param msg Sets the value for the script variable.
      */
     public void setLanguage(String language) {
-	this.language = language;
+        this.language = language;
     }
 
     /**
@@ -151,7 +150,7 @@ public class Script extends Task {
         } catch (IOException e) {
             throw new BuildException(e);
         }
-	
+        
         script += new String(data);
     }
 
@@ -161,6 +160,6 @@ public class Script extends Task {
      * @param msg Sets the value for the script variable.
      */
     public void addText(String text) {
-	this.script += text;
+        this.script += text;
     }
 }

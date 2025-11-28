@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written
  *    permission, please contact apache@apache.org.
@@ -89,11 +89,11 @@ public class WeblogicTOPLinkDeploymentTool extends WeblogicDeploymentTool {
     protected DescriptorHandler getDescriptorHandler(File srcDir) {
         DescriptorHandler handler = super.getDescriptorHandler(srcDir);
         if (toplinkDTD != null) {
-            handler.registerResourceDTD("-//The Object People, Inc.//DTD TOPLink for WebLogic CMP 2.5.1//EN",
-                                        toplinkDTD);
+            handler.registerDTD("-//The Object People, Inc.//DTD TOPLink for WebLogic CMP 2.5.1//EN",
+                                toplinkDTD);
         } else {
-            handler.registerResourceDTD("-//The Object People, Inc.//DTD TOPLink for WebLogic CMP 2.5.1//EN",
-                                        TL_DTD_LOC);
+            handler.registerDTD("-//The Object People, Inc.//DTD TOPLink for WebLogic CMP 2.5.1//EN",
+                                TL_DTD_LOC);
         }
         return handler;                                    
     }
@@ -108,12 +108,25 @@ public class WeblogicTOPLinkDeploymentTool extends WeblogicDeploymentTool {
 
         // Setup a naming standard here?.
 
-        File toplinkDD = new File(getDescriptorDir(), toplinkDescriptor);
 
+        File toplinkDD = null;
+        if (usingBaseJarName()) {
+            toplinkDD = new File(getConfig().descriptorDir, toplinkDescriptor);
+        }
+        else {
+            String ddPrefix = baseName + getConfig().baseNameTerminator;
+            File actualDir = (new File(getConfig().descriptorDir, ddPrefix)).getParentFile();
+            toplinkDD = new File(actualDir, toplinkDescriptor);
+        }
+        
         if (toplinkDD.exists()) {
             ejbFiles.put(META_DIR + toplinkDescriptor,
                          toplinkDD);
         }
+        else {
+            log("Unable to locate toplink deployment descriptor. It was expected to be in " + 
+                toplinkDD.getPath(), Project.MSG_WARN);
+        }                
     }
     
     /**

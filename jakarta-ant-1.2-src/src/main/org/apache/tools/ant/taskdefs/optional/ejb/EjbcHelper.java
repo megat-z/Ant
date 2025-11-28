@@ -1,7 +1,7 @@
 /*
  * The Apache Software License, Version 1.1
  *
- * Copyright (c) 1999 The Apache Software Foundation.  All rights 
+ * Copyright (c) 2000 The Apache Software Foundation.  All rights 
  * reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written 
  *    permission, please contact apache@apache.org.
@@ -53,12 +53,8 @@
  */
 package org.apache.tools.ant.taskdefs.optional.ejb;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.ObjectInputStream;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.FileWriter;
+import java.io.*;
+import java.util.*;
 
 import javax.ejb.deployment.EntityDescriptor;
 import javax.ejb.deployment.DeploymentDescriptor;
@@ -103,7 +99,9 @@ public class EjbcHelper {
     /**
      * The names of the serialised deployment descriptors
      */
-    String[] descriptors; 
+    String[] descriptors;
+
+    private boolean keepGenerated;
 
     /**
      * Command line interface for the ejbc helper task.
@@ -112,7 +110,7 @@ public class EjbcHelper {
         EjbcHelper helper = new EjbcHelper(args);
         helper.process();
     }
-
+    
     /**
      * Initialise the EjbcHelper by reading the command arguments.
      */    
@@ -122,11 +120,29 @@ public class EjbcHelper {
         generatedFilesDirectory = new File(args[index++]);
         sourceDirectory = new File(args[index++]);
         manifestFile = new File(args[index++]);
+        keepGenerated = Boolean.valueOf(args[index++]).booleanValue();
         
         descriptors = new String[args.length - index];
         for (int i = 0; index < args.length; ++i) {
             descriptors[i] = args[index++];
         }
+    }
+    
+    private String[] getCommandLine(boolean debug, File descriptorFile) {
+        Vector v = new Vector();
+        if (!debug) {
+            v.add("-noexit");
+        }
+        if (keepGenerated) {
+            v.add("-keepgenerated");        
+        }
+        v.add("-d");
+        v.add(generatedFilesDirectory.getPath());
+        v.add(descriptorFile.getPath());
+    
+        String[] args = new String[v.size()];
+        v.copyInto(args);
+        return args;
     }
 
     /**
@@ -222,7 +238,7 @@ public class EjbcHelper {
         
         return false;
     }
-
+    
     /**
      * Process the descriptors in turn generating support classes for each and a manifest
      * file for all of the beans.
@@ -240,7 +256,7 @@ public class EjbcHelper {
             else {
                 System.out.println(descriptorFile.getName() + " is up to date");
             }
-            manifest += "Name: " + descriptorFile.getName() + "\nEnterprise-Bean: True\n\n";
+            manifest += "Name: " + descriptorName.replace('\\', '/') + "\nEnterprise-Bean: True\n\n";
         }
         
         FileWriter fw = new FileWriter(manifestFile);
@@ -249,7 +265,7 @@ public class EjbcHelper {
         fw.flush();
         fw.close();
     }
-
+    
     /**
      * Perform the weblogic.ejbc call to regenerate the support classes.
      *
@@ -259,19 +275,15 @@ public class EjbcHelper {
     private void regenerateSupportClasses(File descriptorFile) throws Exception {
         // create a Java task to do the rebuild
 
-        String[] args = {"-noexit",
-                         "-keepgenerated",
-                         "-d", generatedFilesDirectory.getPath(),
-                         descriptorFile.getPath()};
+        
+        String[] args = getCommandLine(false,descriptorFile);
         
         try {
             weblogic.ejbc.main(args);
         }
         catch (Exception e) {
             // run with no exit for better reporting
-            String[] newArgs = {"-keepgenerated",
-                         "-d", generatedFilesDirectory.getPath(),
-                         descriptorFile.getPath()};
+            String[] newArgs = getCommandLine(true, descriptorFile);
             weblogic.ejbc.main(newArgs);
         }
     }

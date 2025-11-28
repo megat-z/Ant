@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written
  *    permission, please contact apache@apache.org.
@@ -70,6 +70,10 @@ public interface BuildLogger extends BuildListener {
      *
      * Only messages with a message level lower than or equal to the given level are 
      * output to the log.
+     * <P>
+     * Constants for the message levels are in Project.java. The order of
+     * the levels, from least to most verbose, is MSG_ERR, MSG_WARN,
+     * MSG_INFO, MSG_VERBOSE, MSG_DEBUG.
      *
      * @param level the logging level for the logger.
      */

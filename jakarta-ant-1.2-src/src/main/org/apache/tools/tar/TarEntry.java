@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written
  *    permission, please contact apache@apache.org.
@@ -177,6 +177,15 @@ public class TarEntry implements TarConstants {
         this.groupName = new StringBuffer("");
         this.devMajor = 0;
         this.devMinor = 0;
+
+    }   
+        
+    /** 
+     * Construct an entry with a name an a link flag.
+     */ 
+    public TarEntry(String name, byte linkFlag) {
+        this(name);
+        this.linkFlag = linkFlag;
     }   
         
     /** 
@@ -238,14 +247,6 @@ public class TarEntry implements TarConstants {
             this.linkFlag = LF_NORMAL;
         } 
         
-        if (this.name.length() > NAMELEN) {
-            throw new RuntimeException("file name '" + this.name 
-                                             + "' is too long ( > " 
-                                             + NAMELEN + " bytes)");
-        
-            // UNDONE When File lets us get the userName, use it!
-        } 
-        
         this.size = file.length();
         this.modTime = file.lastModified() / 1000;
         this.checkSum = 0;
@@ -304,6 +305,14 @@ public class TarEntry implements TarConstants {
     public void setName(String name) {
         this.name = new StringBuffer(name);
     }   
+
+    /**
+     * Set the mode for this entry
+     */
+    public void setMode(int mode) {
+        this.mode = mode;
+    }
+    
         
     /** 
      * Get this entry's user id.
@@ -453,7 +462,18 @@ public class TarEntry implements TarConstants {
     public void setSize(long size) {
         this.size = size;
     }   
+
         
+    /**
+     * Indicate if this entry is a GNU long name block
+     *
+     * @return true if this is a long name extension provided by GNU tar
+     */
+    public boolean isGNULongNameEntry() {
+        return linkFlag == LF_GNUTYPE_LONGNAME &&
+               name.toString().equals(GNU_LONGLINK);
+    }               
+
     /** 
      * Return whether or not this entry represents a directory.
      *  
@@ -568,5 +588,5 @@ public class TarEntry implements TarConstants {
         this.devMajor = (int) TarUtils.parseOctal(header, offset, DEVLEN);
         offset += DEVLEN;
         this.devMinor = (int) TarUtils.parseOctal(header, offset, DEVLEN);
-    }        
+    }
 }       

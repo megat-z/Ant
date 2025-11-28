@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written 
  *    permission, please contact apache@apache.org.
@@ -51,11 +51,7 @@
  * information on the Apache Software Foundation, please see
  * <http://www.apache.org/>.
  */
-
 package org.apache.tools.ant.taskdefs;
-
-import org.apache.tools.ant.*;
-import org.apache.tools.ant.types.*;
 
 import java.io.*;
 import java.util.Enumeration;
@@ -64,14 +60,17 @@ import java.util.Stack;
 import java.util.StringTokenizer;
 import java.util.Vector;
 import java.util.zip.*;
+import org.apache.tools.ant.*;
+import org.apache.tools.ant.types.*;
+import org.apache.tools.ant.util.*;
 
 /**
  * Create a ZIP archive.
  *
  * @author James Davidson <a href="mailto:duncan@x180.com">duncan@x180.com</a>
  * @author Jon S. Stevens <a href="mailto:jon@clearink.com">jon@clearink.com</a>
+ * @author <a href="mailto:stefan.bodewig@epost.de">Stefan Bodewig</a>
  */
-
 public class Zip extends MatchingTask {
 
     private File zipFile;
@@ -83,7 +82,7 @@ public class Zip extends MatchingTask {
     protected String emptyBehavior = "skip";
     private Vector filesets = new Vector ();
     private Hashtable addedDirs = new Hashtable();
-    
+
     /**
      * This is the name/location of where to 
      * create the .zip file.
@@ -96,15 +95,15 @@ public class Zip extends MatchingTask {
      * This is the base directory to look in for 
      * things to zip.
      */
-    public void setBasedir(String baseDirname) {
-        baseDir = project.resolveFile(baseDirname);
+    public void setBasedir(File baseDir) {
+        this.baseDir = baseDir;
     }
 
     /**
      * Sets whether we want to compress the files or only store them.
      */
-    public void setCompress(String compress) {
-        doCompress = Project.toBoolean(compress);
+    public void setCompress(boolean c) {
+        doCompress = c;
     }
 
     /**
@@ -113,6 +112,15 @@ public class Zip extends MatchingTask {
     public void addFileset(FileSet set) {
         filesets.addElement(set);
     }
+
+    /**
+     * Adds a set of files (nested zipfileset attribute) that can be
+     * read from an archive and be given a prefix/fullpath.
+     */
+    public void addZipfileset(ZipFileSet set) {
+        filesets.addElement(set);
+    }
+
 
     /**
      * Sets behavior of the task when no files match.
@@ -132,13 +140,16 @@ public class Zip extends MatchingTask {
     }
 
     public void execute() throws BuildException {
-        if (baseDir == null && filesets.size() == 0 && "zip".equals(archiveType))
-            throw new BuildException("basedir attribute must be set, or at least one fileset must be given!");
-
-        if (zipFile == null) {
-            throw new BuildException("You must specify the " + archiveType + "file to create!");
+        if (baseDir == null && filesets.size() == 0 && "zip".equals(archiveType)) {
+            throw new BuildException( "basedir attribute must be set, or at least " + 
+                                      "one fileset must be given!" );
         }
 
+        if (zipFile == null) {
+            throw new BuildException("You must specify the " + archiveType + " file to create!");
+        }
+
+        // Create the scanners to pass to isUpToDate().
         Vector dss = new Vector ();
         if (baseDir != null)
             dss.addElement(getDirectoryScanner(baseDir));
@@ -146,7 +157,8 @@ public class Zip extends MatchingTask {
             FileSet fs = (FileSet) filesets.elementAt(i);
             dss.addElement (fs.getDirectoryScanner(project));
         }
-        FileScanner[] scanners = new FileScanner[dss.size()];
+        int dssSize = dss.size();
+        FileScanner[] scanners = new FileScanner[dssSize];
         dss.copyInto(scanners);
 
         // quick exit if the target is up to date
@@ -155,31 +167,51 @@ public class Zip extends MatchingTask {
 
         log("Building "+ archiveType +": "+ zipFile.getAbsolutePath());
 
-	try {
-	    ZipOutputStream zOut = new ZipOutputStream(new FileOutputStream(zipFile));
-	    try {
-		if (doCompress) {
-		    zOut.setMethod(ZipOutputStream.DEFLATED);
-		} else {
-		    zOut.setMethod(ZipOutputStream.STORED);
-		}
-		initZipOutputStream(zOut);
-                                
-                for (int j = 0; j < scanners.length; j++) {
-                    addFiles(scanners[j], zOut, "");
+        try {
+            boolean success = false;
+            ZipOutputStream zOut = 
+              new ZipOutputStream(new FileOutputStream(zipFile));
+            try {
+                if (doCompress) {
+                    zOut.setMethod(ZipOutputStream.DEFLATED);
+                } else {
+                    zOut.setMethod(ZipOutputStream.STORED);
                 }
-	    } finally {
-		zOut.close ();
-	    }
-	} catch (IOException ioe) {
-	    String msg = "Problem creating " + archiveType + ": " + ioe.getMessage();
+                initZipOutputStream(zOut);
+
+                // Add the implicit fileset to the archive.
+                if (baseDir != null)
+                    addFiles(getDirectoryScanner(baseDir), zOut, "", "");
+                // Add the explicit filesets to the archive.
+                addFiles(filesets, zOut);
+                success = true;
+            } finally {
+                // Close the output stream.
+                try {
+                    if (zOut != null)
+                        zOut.close ();
+                } catch(IOException ex) {
+                    // If we're in this finally clause because of an exception, we don't 
+                    // really care if there's an exception when closing the stream. E.g. if it
+                    // throws "ZIP file must have at least one entry", because an exception happened
+                    // before we added any files, then we must swallow this exception. Otherwise,
+                    // the error that's reported will be the close() error, which is not the real 
+                    // cause of the problem.
+                    if (success)
+                        throw ex;
+                }
+            }
+        } catch (IOException ioe) {
+            String msg = "Problem creating " + archiveType + ": " + ioe.getMessage();
 
             // delete a bogus ZIP file
-	    if (!zipFile.delete()) {
-		msg += " (and the archive is probably corrupt but I could not delete it)";
-	    }
+            if (!zipFile.delete()) {
+                msg += " (and the archive is probably corrupt but I could not delete it)";
+            }
 
             throw new BuildException(msg, ioe, location);
+        } finally {
+            cleanUp();
         }
     }
 
@@ -190,11 +222,16 @@ public class Zip extends MatchingTask {
      * <p>Ensure parent directories have been added as well.  
      */
     protected void addFiles(FileScanner scanner, ZipOutputStream zOut, 
-                            String prefix) throws IOException {
+                            String prefix, String fullpath) throws IOException {
+        if (prefix.length() > 0 && fullpath.length() > 0)
+             throw new BuildException("Both prefix and fullpath attributes may not be set on the same fileset.");
+
         File thisBaseDir = scanner.getBasedir();
 
         // directories that matched include patterns
         String[] dirs = scanner.getIncludedDirectories();
+        if (dirs.length > 0 && fullpath.length() > 0)
+            throw new BuildException("fullpath attribute may only be specified for filesets that specify a single file.");
         for (int i = 0; i < dirs.length; i++) {
             String name = dirs[i].replace(File.separatorChar,'/');
             if (!name.endsWith("/")) {
@@ -205,11 +242,43 @@ public class Zip extends MatchingTask {
 
         // files that matched include patterns
         String[] files = scanner.getIncludedFiles();
+         if (files.length > 1 && fullpath.length() > 0)
+            throw new BuildException("fullpath attribute may only be specified for filesets that specify a single file.");
         for (int i = 0; i < files.length; i++) {
             File f = new File(thisBaseDir, files[i]);
-            String name = files[i].replace(File.separatorChar,'/');
-            addParentDirs(thisBaseDir, name, zOut, prefix);
-            zipFile(f, zOut, prefix+name);
+            if (fullpath.length() > 0)
+            {
+                // Add this file at the specified location.
+                addParentDirs(null, fullpath, zOut, "");
+                zipFile(f, zOut, fullpath);
+            }
+            else
+            {
+                // Add this file with the specified prefix.
+                String name = files[i].replace(File.separatorChar,'/');
+                addParentDirs(thisBaseDir, name, zOut, prefix);
+                zipFile(f, zOut, prefix+name);
+            }
+        }
+    }
+
+    protected void addZipEntries(ZipFileSet fs, DirectoryScanner ds,
+      ZipOutputStream zOut, String prefix)
+        throws IOException
+    {
+        ZipScanner zipScanner = (ZipScanner) ds;
+        File zipSrc = fs.getSrc();
+
+        ZipEntry entry;
+        ZipInputStream in = new ZipInputStream(new FileInputStream(zipSrc));
+        while ((entry = in.getNextEntry()) != null) {
+            String vPath = entry.getName();
+            if (zipScanner.match(vPath)) {
+                addParentDirs(null, vPath, zOut, prefix);
+                if (! entry.isDirectory()) {
+                  zipFile(in, zOut, prefix+vPath, entry.getTime());
+                }
+            }
         }
     }
 
@@ -228,7 +297,8 @@ public class Zip extends MatchingTask {
      */
     protected boolean isUpToDate(FileScanner[] scanners, File zipFile) throws BuildException
     {
-        File[] files = grabFiles(scanners);
+        String[][] fileNames = grabFileNames(scanners);
+        File[] files = grabFiles(scanners, fileNames);
         if (files.length == 0) {
             if (emptyBehavior.equals("skip")) {
                 log("Warning: skipping "+archiveType+" archive " + zipFile +
@@ -264,10 +334,20 @@ public class Zip extends MatchingTask {
                 return true;
             }
         } else {
-            // Probably unnecessary but just for clarity:
+            for (int i = 0; i < files.length; ++i) {
+                if (files[i].equals(zipFile)) {
+                    throw new BuildException("A zip file cannot include itself", location);
+                }
+            }
+
             if (!zipFile.exists()) return false;
-            for (int i=0; i<files.length; i++) {
-                if (files[i].lastModified() > zipFile.lastModified()) {
+
+            SourceFileScanner sfs = new SourceFileScanner(this);
+            MergingMapper mm = new MergingMapper();
+            mm.setTo(zipFile.getAbsolutePath());
+            for (int i=0; i<scanners.length; i++) {
+                if (sfs.restrict(fileNames[i], scanners[i].getBasedir(), null,
+                                 mm).length > 0) {
                     return false;
                 }
             }
@@ -276,16 +356,32 @@ public class Zip extends MatchingTask {
     }
 
     protected static File[] grabFiles(FileScanner[] scanners) {
-        Vector files = new Vector ();
-        for (int i = 0; i < scanners.length; i++) {
+        return grabFiles(scanners, grabFileNames(scanners));
+    }
+
+    protected static File[] grabFiles(FileScanner[] scanners, 
+                                      String[][] fileNames) {
+        Vector files = new Vector();
+        for (int i = 0; i < fileNames.length; i++) {
             File thisBaseDir = scanners[i].getBasedir();
-            String[] ifiles = scanners[i].getIncludedFiles();
-            for (int j = 0; j < ifiles.length; j++)
-                files.addElement(new File(thisBaseDir, ifiles[j]));
+            for (int j = 0; j < fileNames[i].length; j++)
+                files.addElement(new File(thisBaseDir, fileNames[i][j]));
         }
         File[] toret = new File[files.size()];
         files.copyInto(toret);
         return toret;
+    }
+
+    protected static String[][] grabFileNames(FileScanner[] scanners) {
+        String[][] result = new String[scanners.length][];
+        for (int i=0; i<scanners.length; i++) {
+            String[] files = scanners[i].getIncludedFiles();
+            String[] dirs = scanners[i].getIncludedDirectories();
+            result[i] = new String[files.length + dirs.length];
+            System.arraycopy(files, 0, result[i], 0, files.length);
+            System.arraycopy(dirs, 0, result[i], files.length, dirs.length);
+        }
+        return result;
     }
 
     protected void zipDir(File dir, ZipOutputStream zOut, String vPath)
@@ -298,13 +394,13 @@ public class Zip extends MatchingTask {
         }
         addedDirs.put(vPath, vPath);
         
-	ZipEntry ze = new ZipEntry (vPath);
-	if (dir != null) ze.setTime (dir.lastModified ());
-	ze.setSize (0);
-	ze.setMethod (ZipEntry.STORED);
-	// This is faintly ridiculous:
-	ze.setCrc (emptyCrc);
-	zOut.putNextEntry (ze);
+        ZipEntry ze = new ZipEntry (vPath);
+        if (dir != null) ze.setTime (dir.lastModified ());
+        ze.setSize (0);
+        ze.setMethod (ZipEntry.STORED);
+        // This is faintly ridiculous:
+        ze.setCrc (emptyCrc);
+        zOut.putNextEntry (ze);
     }
 
     protected void zipFile(InputStream in, ZipOutputStream zOut, String vPath,
@@ -369,6 +465,10 @@ public class Zip extends MatchingTask {
     protected void zipFile(File file, ZipOutputStream zOut, String vPath)
         throws IOException
     {
+        if (file.equals(zipFile)) {
+            throw new BuildException("A zip file cannot include itself", location);
+        }
+
         FileInputStream fIn = new FileInputStream(file);
         try {
             zipFile(fIn, zOut, vPath, file.lastModified());
@@ -397,8 +497,65 @@ public class Zip extends MatchingTask {
 
         while (!directories.isEmpty()) {
             String dir = (String) directories.pop();
-            File f = new File(baseDir, dir);
+            File f = null;
+            if (baseDir != null) {
+                f = new File(baseDir, dir);
+            } else {
+                f = new File(dir);
+            }
             zipDir(f, zOut, prefix+dir);
         }
     }
+
+    /**
+     * Iterate over the given Vector of (zip)filesets and add
+     * all files to the ZipOutputStream using the given prefix.
+     */
+    protected void addFiles(Vector filesets, ZipOutputStream zOut)
+        throws IOException {
+        // Add each fileset in the Vector.
+        for (int i = 0; i<filesets.size(); i++) {
+            FileSet fs = (FileSet) filesets.elementAt(i);
+            DirectoryScanner ds = fs.getDirectoryScanner(project);
+
+            String prefix = "";
+            String fullpath = "";
+            if (fs instanceof ZipFileSet) {
+                ZipFileSet zfs = (ZipFileSet) fs;
+                prefix = zfs.getPrefix();
+                fullpath = zfs.getFullpath();
+            }
+            
+            if (prefix.length() > 0 
+                && !prefix.endsWith("/")
+                && !prefix.endsWith("\\")) {
+                prefix += "/";
+            }
+
+            // Need to manually add either fullpath's parent directory, or 
+            // the prefix directory, to the archive. 
+            if (prefix.length() > 0) {
+                addParentDirs(null, prefix, zOut, "");
+                zipDir(null, zOut, prefix);
+            } else if (fullpath.length() > 0) {
+                addParentDirs(null, fullpath, zOut, "");
+            }
+
+            if (fs instanceof ZipFileSet
+                && ((ZipFileSet) fs).getSrc() != null) {
+                addZipEntries((ZipFileSet) fs, ds, zOut, prefix);
+            } else {
+                // Add the fileset.
+                addFiles(ds, zOut, prefix, fullpath);
+            }
+        }
+    }
+
+    /**
+     * Do any clean up necessary to allow this instance to be used again.
+     *
+     * <p>When we get here, the Zip file has been closed and all we
+     * need to do is to reset some globals.</p>
+     */
+    protected void cleanUp() {}
 }

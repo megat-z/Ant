@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written
  *    permission, please contact apache@apache.org.
@@ -54,10 +54,9 @@
 
 package org.apache.tools.ant.taskdefs;
 
-import org.apache.tools.ant.*;
-
 import java.io.*;
 import java.util.*;
+import org.apache.tools.ant.*;
 
 /**
  * Copies a file.
@@ -78,8 +77,8 @@ public class Copyfile extends Task {
         srcFile = src;
     }
 
-    public void setForceoverwrite(String force) {
-        forceOverwrite = Project.toBoolean(force);
+    public void setForceoverwrite(boolean force) {
+        forceOverwrite = force;
     }
 
     public void setDest(File dest) {

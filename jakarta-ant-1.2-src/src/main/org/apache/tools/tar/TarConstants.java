@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written 
  *    permission, please contact apache@apache.org.
@@ -179,4 +179,13 @@ public interface TarConstants {
      */
     public static final String GNU_TMAGIC = "ustar  ";
 
+    /**
+     * The namr of the GNU tar entry which contains a long name.
+     */
+    public static final String GNU_LONGLINK = "././@LongLink";
+    
+    /**
+     * Identifies the *next* file on the tape as having a long name.  
+     */
+    public static final byte LF_GNUTYPE_LONGNAME = (byte) 'L';
 }

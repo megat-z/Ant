@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written
  *    permission, please contact apache@apache.org.
@@ -161,15 +161,22 @@ public class JUnitTestRunner implements TestListener {
                 testClass = loader.loadClass(test.getName());
             }
             
+            Method suiteMethod = null;
             try {
-                Method suiteMethod= testClass.getMethod("suite", new Class[0]);
-                suite = (Test)suiteMethod.invoke(null, new Class[0]);
-            } catch(NoSuchMethodException e) {
-            } catch(InvocationTargetException e) {
-            } catch(IllegalAccessException e) {
+                // check if there is a suite method
+                suiteMethod= testClass.getMethod("suite", new Class[0]);
+            } catch(Exception e) {
+                // no appropriate suite method found. We don't report any
+                // error here since it might be perfectly normal. We don't
+                // know exactly what is the cause, but we're doing exactly
+                // the same as JUnit TestRunner do. We swallow the exceptions.
             }
-            
-            if (suite == null) {
+            if (suiteMethod != null){
+                // if there is a suite method available, then try
+                // to extract the suite from it. If there is an error
+                // here it will be caught below and reported.
+                suite = (Test)suiteMethod.invoke(null, new Class[0]);
+            } else {
                 // try to extract a test suite automatically
                 // this will generate warnings if the class is no suitable Test
                 suite= new TestSuite(testClass);
@@ -237,7 +244,7 @@ public class JUnitTestRunner implements TestListener {
     public void endTest(Test test) {}
 
     /**
-     * Interface TestListener.
+     * Interface TestListener for JUnit &lt;= 3.4.
      *
      * <p>A Test failed.
      */
@@ -245,6 +252,15 @@ public class JUnitTestRunner implements TestListener {
         if (haltOnFailure) {
             res.stop();
         }
+    }
+
+    /**
+     * Interface TestListener for JUnit &gt; 3.4.
+     *
+     * <p>A Test failed.
+     */
+    public void addFailure(Test test, AssertionFailedError t) {
+        addFailure(test, (Throwable) t);
     }
 
     /**
@@ -335,14 +351,18 @@ public class JUnitTestRunner implements TestListener {
         }
     }
 
-    private static void createAndStoreFormatter(String line) 
+    /**
+     * Line format is: formatter=<classname>(,<pathname>)?
+     */
+    private static void createAndStoreFormatter(String line)
         throws BuildException {
-
         FormatterElement fe = new FormatterElement();
-        StringTokenizer tok = new StringTokenizer(line, ",");
-        fe.setClassname(tok.nextToken());
-        if (tok.hasMoreTokens()) {
-            fe.setOutfile(new java.io.File(tok.nextToken()));
+        int pos = line.indexOf(',');
+        if (pos == -1) {
+            fe.setClassname(line);
+        } else {
+            fe.setClassname(line.substring(0, pos));
+            fe.setOutfile( new File(line.substring(pos + 1)) );
         }
         fromCmdLine.addElement(fe.createFormatter());
     }

@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written
  *    permission, please contact apache@apache.org.
@@ -74,6 +74,7 @@ public class DescriptorHandler extends org.xml.sax.HandlerBase {
      * Bunch of constants used for storing entries in a hashtable, and for
      * constructing the filenames of various parts of the ejb jar.
      */
+    private static final String EJB_REF   = "ejb-ref";
     private static final String HOME_INTERFACE   = "home";
     private static final String REMOTE_INTERFACE = "remote";
     private static final String BEAN_CLASS       = "ejb-class";
@@ -84,23 +85,25 @@ public class DescriptorHandler extends org.xml.sax.HandlerBase {
      * processed by the SAX parser.  Accessed by the SAX parser call-back methods
      * startElement() and endElement().
      */
-    private String currentElement = null;
+    protected String currentElement = null;
 
     /**
      * The text of the current element
      */
-    private String currentText = null;
+    protected String currentText = null;
 
     /**
      * Instance variable that stores the names of the files as they will be
      * put into the jar file, mapped to File objects  Accessed by the SAX
      * parser call-back method characters().
      */
-    private Hashtable ejbFiles = null;
+    protected Hashtable ejbFiles = null;
 
     private Hashtable fileDTDs = new Hashtable();
     
     private Hashtable resourceDTDs = new Hashtable();
+
+    private boolean inEJBRef = false;
 
     /**
      * The directory containing the bean classes and interfaces. This is 
@@ -112,13 +115,20 @@ public class DescriptorHandler extends org.xml.sax.HandlerBase {
         this.srcDir = srcDir;
     }
     
-
-    public void registerFileDTD(String publicId, File dtdFile) {
-        fileDTDs.put(publicId, dtdFile);
-    }
-    
-    public void registerResourceDTD(String publicId, String resourceName) {
-        resourceDTDs.put(publicId, resourceName);
+    public void registerDTD(String publicId, String location) {
+        if (location == null) {
+            return;
+        }
+        
+        File fileDTD = new File(location);
+        if (fileDTD.exists()) {
+            fileDTDs.put(publicId, fileDTD);
+            return;
+        }
+        
+        if (getClass().getResource(location) != null) {
+            resourceDTDs.put(publicId, location);
+        }
     }
 
     public InputSource resolveEntity(String publicId, String systemId)
@@ -126,7 +136,7 @@ public class DescriptorHandler extends org.xml.sax.HandlerBase {
     {
         
         File dtdFile = (File) fileDTDs.get(publicId);
-        if (dtdFile != null && dtdFile.exists()) {
+        if (dtdFile != null) {
             try {
                 return new InputSource(new FileInputStream(dtdFile));
             } catch( FileNotFoundException ex ) {
@@ -158,8 +168,9 @@ public class DescriptorHandler extends org.xml.sax.HandlerBase {
      * instance variables to ensure safe operation.
      */
     public void startDocument() throws SAXException {
-        this.ejbFiles         = new Hashtable(10, 1);
+        this.ejbFiles = new Hashtable(10, 1);
         this.currentElement = null;
+        inEJBRef = false;
     }
 
 
@@ -173,7 +184,10 @@ public class DescriptorHandler extends org.xml.sax.HandlerBase {
     public void startElement(String name, AttributeList attrs) 
         throws SAXException {
         this.currentElement = name;
-        currentText = "";            
+        currentText = "";
+        if (name.equals(EJB_REF)) {
+            inEJBRef = true;
+        }
     }
 
 
@@ -190,6 +204,9 @@ public class DescriptorHandler extends org.xml.sax.HandlerBase {
         processElement();
         currentText = "";
         this.currentElement = "";
+        if (name.equals(EJB_REF)) {
+            inEJBRef = false;
+        }
     }
 
     /**
@@ -214,7 +231,11 @@ public class DescriptorHandler extends org.xml.sax.HandlerBase {
     }
     
     
-    private void processElement() {
+    protected void processElement() {
+        if (inEJBRef) {
+            return;
+        }
+        
         if (currentElement.equals(HOME_INTERFACE)   ||
             currentElement.equals(REMOTE_INTERFACE) ||
             currentElement.equals(BEAN_CLASS)       ||
@@ -222,7 +243,7 @@ public class DescriptorHandler extends org.xml.sax.HandlerBase {
             
             // Get the filename into a String object
             File classFile = null;
-            String className = currentText;
+            String className = currentText.trim();
 
             // If it's a primitive wrapper then we shouldn't try and put
             // it into the jar, so ignore it.

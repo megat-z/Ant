@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written
  *    permission, please contact apache@apache.org.
@@ -64,7 +64,7 @@ import org.apache.xalan.xslt.XSLTResultTarget;
 /**
  *
  * @author <a href="mailto:rubys@us.ibm.com">Sam Ruby</a>
- * @version $Revision: 1.3 $ $Date: 2000/08/03 09:34:05 $
+ * @version $Revision: 1.5 $ $Date: 2001/01/03 14:18:35 $
  */
 public class XalanLiaison implements XSLTLiaison {
 
@@ -91,5 +91,9 @@ public class XalanLiaison implements XSLTLiaison {
             return FILEURL + fileName;
         }
         return fileName;
+    }
+    
+    public void addParam(String name, String value){
+        processor.setStylesheetParam(name, value);
     }
 } //-- XalanLiaison

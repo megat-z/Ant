@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written
  *    permission, please contact apache@apache.org.
@@ -82,12 +82,14 @@ public class UnknownElement extends Task {
     public void maybeConfigure() throws BuildException {
         realTask = project.createTask(elementName);
         if (realTask == null) {
-            throw new BuildException("Could not create task of type: "+elementName+
-                                     " because I can\'t find it in the list of task"+
-                                     " class definitions.  Common solutions are: 1"+
-                                     " execute bin/bootstrap. 2 use taskdef to declare"+
-                                     " your task. 3 add the task to defaults.properties."
-                                     , location);
+            log("Could not create task of type: " + elementName + " Common solutions" +
+                " are adding the task to defaults.properties and executing bin/bootstrap",
+                Project.MSG_DEBUG);
+            throw new BuildException("Could not create task of type: " + elementName +
+                                     ". Common solutions are to use taskdef to declare" +
+                                     " your task, or, if this is an optional task," +
+                                     " to put the optional.jar in the lib directory of" +
+                                     " your ant installation (ANT_HOME).", location);
         }
 
         realTask.setLocation(location);

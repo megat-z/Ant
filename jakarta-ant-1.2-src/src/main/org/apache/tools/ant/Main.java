@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written
  *    permission, please contact apache@apache.org.
@@ -161,6 +161,8 @@ public class Main {
 
     protected Main(String[] args) throws BuildException {
 
+        String searchForThis = null;
+
         // cycle through given args
 
         for (int i = 0; i < args.length; i++) {
@@ -238,7 +240,7 @@ public class Main {
                 if (posEq > 0) {
                     value = name.substring(posEq+1);
                     name = name.substring(0, posEq);
-                } else if (i < args.length)
+                } else if (i < args.length-1)
                     value = args[++i];
 
                 definedProps.put(name, value);
@@ -253,9 +255,16 @@ public class Main {
             } else if (arg.equals("-projecthelp")) {
                 // set the flag to display the targets and quit
                 projectHelp = true;
+            } else if (arg.equals("-find")) {
+                // eat up next arg if present, default to build.xml
+                if (i < args.length-1) {
+                    searchForThis = args[++i];
+                } else {
+                    searchForThis = DEFAULT_BUILD_FILENAME;
+                }
             } else if (arg.startsWith("-")) {
                 // we don't have any more args to recognize!
-                String msg = "Unknown arg: " + arg;
+                String msg = "Unknown argument: " + arg;
                 System.out.println(msg);
                 printUsage();
                 return;
@@ -267,9 +276,13 @@ public class Main {
         }
 
         // if buildFile was not specified on the command line,
-        // then search for it
         if (buildFile == null) {
-            buildFile = findBuildFile(DEFAULT_BUILD_FILENAME);
+            // but -find then search for it
+            if (searchForThis != null) {
+                buildFile = findBuildFile(".", searchForThis);
+            } else {
+                buildFile = new File(DEFAULT_BUILD_FILENAME);
+            }
         }
 
         // make sure buildfile exists
@@ -287,18 +300,6 @@ public class Main {
         }
 
         readyToRun = true;
-    }
-
-    /**
-     * Helper to get the parent file for a given filename.
-     *
-     * <P>Added to simulate File.getParentFile() from JDK 1.2.
-     *
-     * @param filename  File name
-     * @return          Parent file or null if none
-     */
-    private File getParentFile(String filename) {
-        return getParentFile(new File(filename));
     }
 
     /**
@@ -334,12 +335,12 @@ public class Main {
      *
      * @exception BuildException    Failed to locate a build file
      */
-    private File findBuildFile(String suffix) throws BuildException {
+    private File findBuildFile(String start, String suffix) throws BuildException {
         if (msgOutputLevel >= Project.MSG_INFO) {
             System.out.println("Searching for " + suffix + " ...");
         }
 
-        File parent = getParentFile(suffix);
+        File parent = new File(new File(start).getAbsolutePath());
         File file = new File(parent, suffix);
         
         // check if the target file exists in the current directory
@@ -503,6 +504,8 @@ public class Main {
         msg.append("  -listener <classname>  add an instance of class as a project listener" + lSep);
         msg.append("  -buildfile <file>      use given buildfile" + lSep);
         msg.append("  -D<property>=<value>   use value for given property" + lSep);
+        msg.append("  -find <file>           search for buildfile towards the root of the" + lSep);
+        msg.append("                         filesystem and use it" + lSep);
         System.out.println(msg.toString());
     }
 
@@ -558,10 +561,10 @@ public class Main {
                 int pos = findTargetPosition(topNames, targetName);
                 topNames.insertElementAt(targetName, pos);
                 topDescriptions.insertElementAt(targetDescription, pos);
-            if (targetName.length() > maxLength) {
-                maxLength = targetName.length();
+                if (targetName.length() > maxLength) {
+                    maxLength = targetName.length();
+                }
             }
-        }
         }
         printTargets(topNames, topDescriptions, "Main targets:", maxLength);
         printTargets(subNames, null, "Subtargets:", 0);

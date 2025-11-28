@@ -1,7 +1,7 @@
 /*
  * The Apache Software License, Version 1.1
  *
- * Copyright (c) 1999 The Apache Software Foundation.  All rights 
+ * Copyright (c) 2000 The Apache Software Foundation.  All rights 
  * reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written 
  *    permission, please contact apache@apache.org.
@@ -53,12 +53,9 @@
  */
 package org.apache.tools.ant.taskdefs.optional.ejb;
 
-
-import org.apache.tools.ant.BuildException;
-import org.apache.tools.ant.DirectoryScanner;
-import org.apache.tools.ant.Project;
+import org.apache.tools.ant.*;
 import org.apache.tools.ant.taskdefs.*;
-import org.apache.tools.ant.types.Path;
+import org.apache.tools.ant.types.*;
 
 import java.io.File;
 
@@ -99,6 +96,8 @@ public class Ejbc extends MatchingTask {
      */
     private File sourceDirectory;
     
+    public boolean keepgenerated;
+    
     /**
      * Do the work.
      *
@@ -137,6 +136,7 @@ public class Ejbc extends MatchingTask {
         String[] files = ds.getIncludedFiles();
 
         Java helperTask = (Java)project.createTask("java");
+        helperTask.setTaskName(getTaskName());
         helperTask.setFork(true);
         helperTask.setClassname("org.apache.tools.ant.taskdefs.optional.ejb.EjbcHelper");
         String args = "";
@@ -144,17 +144,24 @@ public class Ejbc extends MatchingTask {
         args += " " + generatedFilesDirectory;
         args += " " + sourceDirectory;
         args += " " + generatedManifestFile;
+        args += " " + keepgenerated;
+        
         for (int i = 0; i < files.length; ++i) {
             args += " " + files[i];
         }
                                     
-        helperTask.setArgs(args);
+        Commandline.Argument arguments = helperTask.createArg();
+        arguments.setLine(args);
         helperTask.setClasspath(new Path(project, execClassPath));
         if (helperTask.executeJava() != 0) {                         
             throw new BuildException("Execution of ejbc helper failed");
         }
     }
-
+    
+    public boolean getKeepgenerated() {
+        return keepgenerated;
+    }
+    
     /**
      * Set the directory from where the serialised deployment descriptors are
      * to be read.
@@ -173,7 +180,12 @@ public class Ejbc extends MatchingTask {
     public void setDest(String dirName) {
         generatedFilesDirectory = new File(dirName);
     }
-
+    
+    public void setKeepgenerated(String newKeepgenerated) {
+        keepgenerated = Boolean.valueOf(newKeepgenerated.trim()).booleanValue();
+        
+    }
+    
     /**
      * Set the generated manifest file. 
      *
@@ -192,7 +204,7 @@ public class Ejbc extends MatchingTask {
     public void setClasspath(String s) {
         this.classpath = project.translatePath(s);
     }
-
+    
     /**
      * Set the directory containing the source code for the home interface, remote interface
      * and public key class definitions.
@@ -202,5 +214,4 @@ public class Ejbc extends MatchingTask {
     public void setSrc(String dirName) {
         sourceDirectory = new File(dirName);
     }
-                
 }

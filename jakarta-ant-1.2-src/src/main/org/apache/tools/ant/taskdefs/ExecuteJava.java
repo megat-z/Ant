@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written
  *    permission, please contact apache@apache.org.
@@ -64,16 +64,19 @@ import org.apache.tools.ant.types.Path;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.io.*;
 
 /*
  *
  * @author thomas.haas@softwired-inc.com
+ * @author <a href="mailto:stefan.bodewig@epost.de">Stefan Bodewig</a>
  */
 public class ExecuteJava {
 
     private Commandline javaCommand = null;
     private Path classpath = null;
     private CommandlineJava.SysProperties sysProperties = null;
+    private PrintStream out;
 
     public void setJavaCommand(Commandline javaCommand) {
         this.javaCommand = javaCommand;
@@ -87,7 +90,18 @@ public class ExecuteJava {
         sysProperties = s;
     }
 
+    /**
+     * All output (System.out as well as System.err) will be written
+     * to this Stream.
+     */
+    public void setOutput(PrintStream out) {
+        this.out = out;
+    }
+
     public void execute(Project project) throws BuildException{
+        PrintStream sOut = System.out;
+        PrintStream sErr = System.err;
+
         final String classname = javaCommand.getExecutable();
         final Object[] argument = { javaCommand.getArguments() };
         try {
@@ -95,12 +109,18 @@ public class ExecuteJava {
                 sysProperties.setSystem();
             }
 
+            if (out != null) {
+                System.setErr(out);
+                System.setOut(out);
+            }
+
             final Class[] param = { Class.forName("[Ljava.lang.String;") };
             Class target = null;
             if (classpath == null) {
                 target = Class.forName(classname);
             } else {
-                AntClassLoader loader = new AntClassLoader(project, classpath);
+                AntClassLoader loader = new AntClassLoader(project, classpath, false);
+                loader.setIsolated(true);
                 target = loader.forceLoadClass(classname);
             }
             final Method main = target.getMethod("main", param);
@@ -122,6 +142,11 @@ public class ExecuteJava {
         } finally {
             if (sysProperties != null) {
                 sysProperties.restoreSystem();
+            }
+            if (out != null) {
+                System.setOut(sOut);
+                System.setErr(sErr);
+                out.close();
             }
         }
     }

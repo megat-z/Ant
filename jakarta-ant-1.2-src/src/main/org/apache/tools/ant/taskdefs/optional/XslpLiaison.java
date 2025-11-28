@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written
  *    permission, please contact apache@apache.org.
@@ -65,7 +65,7 @@ import com.kvisco.xsl.XSLStylesheet;
 /**
  *
  * @author <a href="mailto:rubys@us.ibm.com">Sam Ruby</a>
- * @version $Revision: 1.2 $ $Date: 2000/06/23 21:18:07 $
+ * @version $Revision: 1.4 $ $Date: 2001/01/03 14:18:36 $
  */
 public class XslpLiaison implements XSLTLiaison {
 
@@ -83,6 +83,10 @@ public class XslpLiaison implements XSLTLiaison {
 
     public void transform(String infile, String outfile) throws Exception {
       processor.process(infile, xslSheet, new FileWriter(outfile));
+    }
+
+    public void addParam(String name, String expression){
+      processor.setProperty(name, expression);
     }
 
 } //-- XSLPLiaison

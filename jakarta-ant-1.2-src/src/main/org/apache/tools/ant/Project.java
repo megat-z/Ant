@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written
  *    permission, please contact apache@apache.org.
@@ -106,6 +106,9 @@ public class Project {
     private File baseDir;
 
     private Vector listeners = new Vector();
+
+    private static java.lang.reflect.Method setLastModified = null;
+    private static Object lockReflection = new Object();
 
     static {
 
@@ -285,6 +288,7 @@ public class Project {
     }
 
     public void setName(String name) {
+        setUserProperty("ant.project.name",  name);
         this.name = name;
     }
 
@@ -316,7 +320,7 @@ public class Project {
 
     public void setBaseDir(File baseDir) {
         this.baseDir = baseDir;
-	setProperty( "basedir", baseDir.getAbsolutePath());
+        setProperty( "basedir", baseDir.getAbsolutePath());
         String msg = "Project base dir set to: " + baseDir;
         log(msg, MSG_VERBOSE);
     }
@@ -429,7 +433,7 @@ public class Project {
     public Task createTask(String taskType) throws BuildException {
         Class c = (Class) taskClassDefinitions.get(taskType);
 
-	if (c == null)
+        if (c == null)
             return null;
         try {
             Object o = c.newInstance();
@@ -462,7 +466,7 @@ public class Project {
     public Object createDataType(String typeName) throws BuildException {
         Class c = (Class) dataClassDefinitions.get(typeName);
 
-	if (c == null)
+        if (c == null)
             return null;
 
         try {
@@ -671,6 +675,22 @@ public class Project {
                  overwrite);
     }
 
+     /**
+     * Convienence method to copy a file from a source to a
+     * destination specifying if token filtering must be used, if
+     * source files may overwrite newer destination files and the
+     * last modified time of <code>destFile</code> file should be made equal
+     * to the last modified time of <code>sourceFile</code>.
+     *
+     * @throws IOException 
+     */
+    public void copyFile(String sourceFile, String destFile, boolean filtering,
+                         boolean overwrite, boolean preserveLastModified)
+        throws IOException {
+        copyFile(new File(sourceFile), new File(destFile), filtering, 
+                 overwrite, preserveLastModified);
+    }
+
     /**
      * Convienence method to copy a file from a source to a destination.
      * No filtering is performed.
@@ -688,8 +708,7 @@ public class Project {
      * @throws IOException
      */
     public void copyFile(File sourceFile, File destFile, boolean filtering)
-        throws IOException
-    {
+        throws IOException {
         copyFile(sourceFile, destFile, filtering, false);
     }
 
@@ -702,10 +721,25 @@ public class Project {
      */
     public void copyFile(File sourceFile, File destFile, boolean filtering,
                          boolean overwrite) throws IOException {
+        copyFile(sourceFile, destFile, filtering, overwrite, false);
+    }
 
+    /**
+     * Convienence method to copy a file from a source to a
+     * destination specifying if token filtering must be used, if
+     * source files may overwrite newer destination files and the
+     * last modified time of <code>destFile</code> file should be made equal
+     * to the last modified time of <code>sourceFile</code>.
+     *
+     * @throws IOException 
+     */
+    public void copyFile(File sourceFile, File destFile, boolean filtering,
+                         boolean overwrite, boolean preserveLastModified)
+        throws IOException {
+        
         if (overwrite ||
             destFile.lastModified() < sourceFile.lastModified()) {
-            log("Copy: " + sourceFile.getAbsolutePath() + " > "
+            log("Copy: " + sourceFile.getAbsolutePath() + " -> "
                     + destFile.getAbsolutePath(), MSG_VERBOSE);
 
             // ensure that parent dir of dest file exists!
@@ -749,6 +783,52 @@ public class Project {
                 in.close();
                 out.close();
             }
+
+            if (preserveLastModified) {
+                setFileLastModified(destFile, sourceFile.lastModified());
+            }
+        }
+    }
+
+    /**
+     * Calls File.setLastModified(long time) in a Java 1.1 compatible way.
+     */
+    void setFileLastModified(File file, long time) throws BuildException {
+        if (getJavaVersion() == JAVA_1_1) {
+            log("Cannot change the modification time of " + file
+                + " in JDK 1.1", Project.MSG_WARN);
+            return;
+        }
+        if (setLastModified == null) {
+            synchronized (lockReflection) {
+                if (setLastModified == null) {
+                    try {
+                        setLastModified = 
+                            java.io.File.class.getMethod("setLastModified", 
+                                                         new Class[] {Long.TYPE});
+                    } catch (NoSuchMethodException nse) {
+                        throw new BuildException("File.setlastModified not in JDK > 1.1?",
+                                                 nse);
+                    }
+                }
+            }
+        }
+        Long[] times = new Long[1];
+        if (time < 0) {
+            times[0] = new Long(System.currentTimeMillis());
+        } else {
+            times[0] = new Long(time);
+        }
+        try {
+            log("Setting modification time for " + file, MSG_VERBOSE);
+            setLastModified.invoke(file, times);
+        } catch (java.lang.reflect.InvocationTargetException ite) {
+            Throwable nested = ite.getTargetException();
+            throw new BuildException("Exception setting the modification time "
+                                     + "of " + file, nested);
+        } catch (Throwable other) {
+            throw new BuildException("Exception setting the modification time "
+                                     + "of " + file, other);
         }
     }
 
@@ -835,7 +915,7 @@ public class Project {
      * @exception BuildException if there is a cyclic dependency among the
      * Targets, or if a Target does not exist.
      */
-    private final Vector topoSort(String root, Hashtable targets)
+    public final Vector topoSort(String root, Hashtable targets)
         throws BuildException {
         Vector ret = new Vector();
         Hashtable state = new Hashtable();

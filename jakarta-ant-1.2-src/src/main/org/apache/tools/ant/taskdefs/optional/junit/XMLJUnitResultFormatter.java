@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written
  *    permission, please contact apache@apache.org.
@@ -62,17 +62,19 @@ import java.util.*;
 import javax.xml.parsers.*;
 import org.w3c.dom.*;
 import org.apache.tools.ant.BuildException;
+import org.apache.tools.ant.util.DOMElementWriter;
 
+import junit.framework.AssertionFailedError;
 import junit.framework.Test;
 import junit.framework.TestCase;
 
 /**
  * Prints XML output of the test to a specified Writer.
  *
- * @author <a href="mailto:stefan.bodewig@megabit.net">Stefan Bodewig</a>
+ * @author <a href="mailto:stefan.bodewig@epost.de">Stefan Bodewig</a>
  */
 
-public class XMLJUnitResultFormatter implements JUnitResultFormatter {
+public class XMLJUnitResultFormatter implements JUnitResultFormatter, XMLConstants {
 
     private static DocumentBuilder getDocumentBuilder() {
         try {
@@ -86,7 +88,8 @@ public class XMLJUnitResultFormatter implements JUnitResultFormatter {
     /**
      * Formatter for timings.
      */
-    private NumberFormat nf = NumberFormat.getInstance();
+    private NumberFormat nf = NumberFormat.getInstance(Locale.US);
+
     /**
      * The XML document.
      */
@@ -119,25 +122,25 @@ public class XMLJUnitResultFormatter implements JUnitResultFormatter {
      */
     public void startTestSuite(JUnitTest suite) {
         doc = getDocumentBuilder().newDocument();
-        rootElement = doc.createElement("testsuite");
-        rootElement.setAttribute("name", xmlEscape(suite.getName()));
+        rootElement = doc.createElement(TESTSUITE);
+        rootElement.setAttribute(ATTR_NAME, suite.getName());
     }
 
     /**
      * The whole testsuite ended.
      */
     public void endTestSuite(JUnitTest suite) throws BuildException {
-        rootElement.setAttribute("tests", ""+suite.runCount());
-        rootElement.setAttribute("failures", ""+suite.failureCount());
-        rootElement.setAttribute("errors", ""+suite.errorCount());
-        rootElement.setAttribute("time", 
-                                 nf.format(suite.getRunTime()/1000.0)+" sec");
+        rootElement.setAttribute(ATTR_TESTS, ""+suite.runCount());
+        rootElement.setAttribute(ATTR_FAILURES, ""+suite.failureCount());
+        rootElement.setAttribute(ATTR_ERRORS, ""+suite.errorCount());
+        rootElement.setAttribute(ATTR_TIME,
+                                 nf.format(suite.getRunTime()/1000.0));
         if (out != null) {
             Writer wri = null;
             try {
                 wri = new OutputStreamWriter(out);
                 wri.write("<?xml version=\"1.0\"?>\n");
-                write(rootElement, wri, 0);
+                (new DOMElementWriter()).write(rootElement, wri, 0, "  ");
                 wri.flush();
             } catch(IOException exc) {
                 throw new BuildException("Unable to write log file", exc);
@@ -160,8 +163,8 @@ public class XMLJUnitResultFormatter implements JUnitResultFormatter {
      */
     public void startTest(Test t) {
         lastTestStart = System.currentTimeMillis();
-        currentTest = doc.createElement("testcase");
-        currentTest.setAttribute("name", xmlEscape(((TestCase) t).name()));
+        currentTest = doc.createElement(TESTCASE);
+        currentTest.setAttribute(ATTR_NAME, ((TestCase) t).name());
         rootElement.appendChild(currentTest);
     }
 
@@ -171,18 +174,27 @@ public class XMLJUnitResultFormatter implements JUnitResultFormatter {
      * <p>A Test is finished.
      */
     public void endTest(Test test) {
-        currentTest.setAttribute("time", 
+        currentTest.setAttribute(ATTR_TIME,
                                  nf.format((System.currentTimeMillis()-lastTestStart)
                                            / 1000.0));
     }
 
     /**
-     * Interface TestListener.
+     * Interface TestListener for JUnit &lt;= 3.4.
      *
      * <p>A Test failed.
      */
     public void addFailure(Test test, Throwable t) {
-        formatError("failure", test, t);
+        formatError(FAILURE, test, t);
+    }
+
+    /**
+     * Interface TestListener for JUnit &gt; 3.4.
+     *
+     * <p>A Test failed.
+     */
+    public void addFailure(Test test, AssertionFailedError t) {
+        addFailure(test, (Throwable) t);
     }
 
     /**
@@ -191,7 +203,7 @@ public class XMLJUnitResultFormatter implements JUnitResultFormatter {
      * <p>An error occured while running the test.
      */
     public void addError(Test test, Throwable t) {
-        formatError("error", test, t);
+        formatError(ERROR, test, t);
     }
 
     private void formatError(String type, Test test, Throwable t) {
@@ -208,107 +220,14 @@ public class XMLJUnitResultFormatter implements JUnitResultFormatter {
 
         String message = t.getMessage();
         if (message != null && message.length() > 0) {
-            nested.setAttribute("message", xmlEscape(t.getMessage()));
+            nested.setAttribute(ATTR_MESSAGE, t.getMessage());
         }
-        nested.setAttribute("type", xmlEscape(t.getClass().getName()));
+        nested.setAttribute(ATTR_TYPE, t.getClass().getName());
 
         StringWriter swr = new StringWriter();
         t.printStackTrace(new PrintWriter(swr, true));
         Text trace = doc.createTextNode(swr.toString());
         nested.appendChild(trace);
-    }
-
-
-    /**
-     * Translates <, & , " and > to corresponding entities.
-     */
-    private String xmlEscape(String orig) {
-        if (orig == null) return "";
-        StringBuffer temp = new StringBuffer();
-        StringCharacterIterator sci = new StringCharacterIterator(orig);
-        for (char c = sci.first(); c != CharacterIterator.DONE;
-             c = sci.next()) {
-
-            switch (c) {
-            case '<':
-                temp.append("&lt;");
-                break;
-            case '>':
-                temp.append("&gt;");
-                break;
-            case '\"':
-                temp.append("&quot;");
-                break;
-            case '&':
-                temp.append("&amp;");
-                break;
-            default:
-                temp.append(c);
-                break;
-            }
-        }
-        return temp.toString();
-    }
-
-    /**
-     *  Writes a DOM element to a stream.
-     */
-    private static void write(Element element, Writer out, int indent) throws IOException {
-        // Write indent characters
-        for (int i = 0; i < indent; i++) {
-            out.write("\t");
-        }
-
-        // Write element
-        out.write("<");
-        out.write(element.getTagName());
-
-        // Write attributes
-        NamedNodeMap attrs = element.getAttributes();
-        for (int i = 0; i < attrs.getLength(); i++) {
-            Attr attr = (Attr) attrs.item(i);
-            out.write(" ");
-            out.write(attr.getName());
-            out.write("=\"");
-            out.write(attr.getValue());
-            out.write("\"");
-        }
-        out.write(">");
-
-        // Write child attributes and text
-        boolean hasChildren = false;
-        NodeList children = element.getChildNodes();
-        for (int i = 0; i < children.getLength(); i++) {
-            Node child = children.item(i);
-
-            if (child.getNodeType() == Node.ELEMENT_NODE) {
-                if (!hasChildren) {
-                    out.write("\n");
-                    hasChildren = true;
-                }
-                write((Element)child, out, indent + 1);
-            }
-
-            if (child.getNodeType() == Node.TEXT_NODE) {
-                out.write("<![CDATA[");
-                out.write(((Text)child).getData());
-                out.write("]]>");
-            }
-        }
-
-        // If we had child elements, we need to indent before we close
-        // the element, otherwise we're on the same line and don't need
-        // to indent
-        if (hasChildren) {
-            for (int i = 0; i < indent; i++) {
-                out.write("\t");
-            }
-        }
-
-        // Write element close
-        out.write("</");
-        out.write(element.getTagName());
-        out.write(">\n");
     }
 
 } // XMLJUnitResultFormatter

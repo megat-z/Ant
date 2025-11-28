@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written
  *    permission, please contact apache@apache.org.
@@ -65,7 +65,7 @@ import java.io.*;
  * @author duncan@x180.com
  * @author rubys@us.ibm.com
  * @author thomas.haas@softwired-inc.com
- * @author <a href="mailto:stefan.bodewig@megabit.net">Stefan Bodewig</a>
+ * @author <a href="mailto:stefan.bodewig@epost.de">Stefan Bodewig</a>
  * @author <a href="mailto:mariusz@rakiura.org">Mariusz Nowostawski</a> 
  */
 public class ExecTask extends Task {
@@ -74,6 +74,7 @@ public class ExecTask extends Task {
     private File out;
     private File dir;
     protected boolean failOnError = false;
+    protected boolean newEnvironment = false;
     private Integer timeout = null;
     private Environment env = new Environment();
     protected Commandline cmdl = new Commandline();
@@ -101,7 +102,7 @@ public class ExecTask extends Task {
     }
 
     /**
-     * Only execute the process if <code>os.name</code> includes this string.
+     * Only execute the process if <code>os.name</code> is included in this string.
      */
     public void setOs(String os) {
         this.os = os;
@@ -129,6 +130,13 @@ public class ExecTask extends Task {
      */
     public void setFailonerror(boolean fail) {
         failOnError = fail;
+    }
+
+    /**
+     * Use a completely new environment
+     */
+    public void setNewenvironment(boolean newenv) {
+        newEnvironment = newenv;
     }
 
     /**
@@ -161,6 +169,12 @@ public class ExecTask extends Task {
     protected void checkConfiguration() throws BuildException {
         if (cmdl.getExecutable() == null) {
             throw new BuildException("no executable specified", location);
+        }
+        if (dir != null && !dir.exists()) {
+        	throw new BuildException("The directory you specified does not exist");
+        }
+        if (dir != null && !dir.isDirectory()) {
+        	throw new BuildException("The directory you specified is not a directory");
         }
     }
 
@@ -198,6 +212,7 @@ public class ExecTask extends Task {
                     Project.MSG_VERBOSE);
             }
         }
+        exe.setNewenvironment(newEnvironment);
         exe.setEnvironment(environment);
         return exe;
     }

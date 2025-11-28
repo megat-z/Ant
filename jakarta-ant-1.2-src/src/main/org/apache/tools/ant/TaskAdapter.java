@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written 
  *    permission, please contact apache@apache.org.
@@ -71,20 +71,20 @@ public class TaskAdapter extends Task {
      * Do the execution.
      */
     public void execute() throws BuildException {
-	Method executeM=null;
-	try {
-	    Class c=proxy.getClass();
-	    executeM=c.getMethod( "execute", new Class[0] );
-	    if( executeM == null ) {
-		log("No execute in " + proxy.getClass(), Project.MSG_ERR);
-		throw new BuildException("No execute in " + proxy.getClass());
-	    }
-	    executeM.invoke(proxy, null);
-	    return; 
-	} catch( Exception ex ) {
-	    log("Error in " + proxy.getClass(), Project.MSG_ERR);
-	    throw new BuildException( ex );
-	}
+        Method executeM=null;
+        try {
+            Class c=proxy.getClass();
+            executeM=c.getMethod( "execute", new Class[0] );
+            if( executeM == null ) {
+                log("No execute in " + proxy.getClass(), Project.MSG_ERR);
+                throw new BuildException("No execute in " + proxy.getClass());
+            }
+            executeM.invoke(proxy, null);
+            return; 
+        } catch( Exception ex ) {
+            log("Error in " + proxy.getClass(), Project.MSG_ERR);
+            throw new BuildException( ex );
+        }
 
     }
     

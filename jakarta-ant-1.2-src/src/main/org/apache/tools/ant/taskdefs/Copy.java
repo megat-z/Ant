@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written
  *    permission, please contact apache@apache.org.
@@ -56,6 +56,7 @@ package org.apache.tools.ant.taskdefs;
 
 import org.apache.tools.ant.*;
 import org.apache.tools.ant.types.*;
+import org.apache.tools.ant.util.*;
 
 import java.io.*;
 import java.util.*;
@@ -71,6 +72,7 @@ import java.util.*;
  * copyfile/copydir tasks.</p>
  *
  * @author Glenn McAllister <a href="mailto:glennm@ca.ibm.com">glennm@ca.ibm.com</a>
+ * @author <a href="mailto:stefan.bodewig@epost.de">Stefan Bodewig</a>
  */
 public class Copy extends Task {
     protected File file = null;     // the source file 
@@ -79,6 +81,7 @@ public class Copy extends Task {
     protected Vector filesets = new Vector();
 
     protected boolean filtering = false;
+    protected boolean preserveLastModified = false;
     protected boolean forceOverwrite = false;
     protected boolean flatten = false;
     protected int verbosity = Project.MSG_VERBOSE;
@@ -86,6 +89,8 @@ public class Copy extends Task {
 
     protected Hashtable fileCopyMap = new Hashtable();
     protected Hashtable dirCopyMap = new Hashtable();
+
+    protected Mapper mapperElement = null;
 
     /**
      * Sets a single source file to copy.
@@ -106,6 +111,13 @@ public class Copy extends Task {
      */
     public void setTodir(File destDir) {
         this.destDir = destDir;
+    }
+
+    /**
+     * Give the copied files the same last modified time as the original files.
+     */
+    public void setPreserveLastModified(String preserve) {
+        preserveLastModified = Project.toBoolean(preserve);
     }
 
     /**
@@ -159,6 +171,18 @@ public class Copy extends Task {
     }
 
     /**
+     * Defines the FileNameMapper to use (nested mapper element).
+     */
+    public Mapper createMapper() throws BuildException {
+        if (mapperElement != null) {
+            throw new BuildException("Cannot define more than one mapper",
+                                     location);
+        }
+        mapperElement = new Mapper(project);
+        return mapperElement;
+    }
+
+    /**
      * Performs the copy operation.
      */
     public void execute() throws BuildException {
@@ -167,13 +191,17 @@ public class Copy extends Task {
 
         // deal with the single file
         if (file != null) {
-            if (destFile == null) {
-                destFile = new File(destDir, file.getName());
-            }
-
-            if (forceOverwrite || 
-                (file.lastModified() > destFile.lastModified())) {
-                fileCopyMap.put(file.getAbsolutePath(), destFile.getAbsolutePath());
+            if (file.exists()) {
+                if (destFile == null) {
+                    destFile = new File(destDir, file.getName());
+                }
+                
+                if (forceOverwrite || 
+                    (file.lastModified() > destFile.lastModified())) {
+                    fileCopyMap.put(file.getAbsolutePath(), destFile.getAbsolutePath());
+                }
+            } else {
+                log("Could not find file " + file.getAbsolutePath() + " to copy.");
             }
         }
 
@@ -240,36 +268,44 @@ public class Copy extends Task {
      * copied.
      */
     protected void scan(File fromDir, File toDir, String[] files, String[] dirs) {
-        for (int i = 0; i < files.length; i++) {
-            String filename = files[i];
-            File src = new File(fromDir, filename);
-            File dest;
-            if (flatten) {
-                dest = new File(toDir, new File(filename).getName());
-            } else {
-                dest = new File(toDir, filename);
-            }
-            if (forceOverwrite ||
-                (src.lastModified() > dest.lastModified())) {
-                fileCopyMap.put(src.getAbsolutePath(),
-                                 dest.getAbsolutePath());
-            }
+        FileNameMapper mapper = null;
+        if (mapperElement != null) {
+            mapper = mapperElement.getImplementation();
+        } else if (flatten) {
+            mapper = new FlatFileNameMapper();
+        } else {
+            mapper = new IdentityMapper();
         }
 
+        buildMap(fromDir, toDir, files, mapper, fileCopyMap);
+
         if (includeEmpty) {
-            for (int i = 0; i < dirs.length; i++) {
-                String dname = dirs[i];
-                File sd = new File(fromDir, dname);
-                File dd;
-                if (flatten) {
-                    dd = new File(toDir, new File(dname).getName());
-                } else {
-                    dd = new File(toDir, dname);
-                }
-                if (forceOverwrite || (sd.lastModified() > dd.lastModified())) {
-                    dirCopyMap.put(sd.getAbsolutePath(), dd.getAbsolutePath());
+            buildMap(fromDir, toDir, dirs, mapper, dirCopyMap);
+        }
+    }
+
+    protected void buildMap(File fromDir, File toDir, String[] names,
+                            FileNameMapper mapper, Hashtable map) {
+
+        String[] toCopy = null;
+        if (forceOverwrite) {
+            Vector v = new Vector();
+            for (int i=0; i<names.length; i++) {
+                if (mapper.mapFileName(names[i]) != null) {
+                    v.addElement(names[i]);
                 }
             }
+            toCopy = new String[v.size()];
+            v.copyInto(toCopy);
+        } else {
+            SourceFileScanner ds = new SourceFileScanner(this);
+            toCopy = ds.restrict(names, fromDir, toDir, mapper);
+        }
+        
+        for (int i = 0; i < toCopy.length; i++) {
+            File src = new File(fromDir, toCopy[i]);
+            File dest = new File(toDir, mapper.mapFileName(toCopy[i])[0]);
+            map.put( src.getAbsolutePath(), dest.getAbsolutePath() );
         }
     }
 
@@ -279,20 +315,28 @@ public class Copy extends Task {
      */
     protected void doFileOperations() {
         if (fileCopyMap.size() > 0) {
-            log("Copying " + fileCopyMap.size() + " files to " + 
-                destDir.getAbsolutePath() );
+            log("Copying " + fileCopyMap.size() + 
+                " file" + (fileCopyMap.size() == 1 ? "" : "s") + 
+                " to " + destDir.getAbsolutePath() );
 
             Enumeration e = fileCopyMap.keys();
             while (e.hasMoreElements()) {
                 String fromFile = (String) e.nextElement();
                 String toFile = (String) fileCopyMap.get(fromFile);
 
+                if( fromFile.equals( toFile ) ) {
+                    log("Skipping self-copy of " + fromFile, verbosity);
+                    continue;
+                }
+
                 try {
                     log("Copying " + fromFile + " to " + toFile, verbosity);
+                    
                     project.copyFile(fromFile, 
                                      toFile, 
                                      filtering, 
-                                     forceOverwrite);
+                                     forceOverwrite,
+                                     preserveLastModified);
                 } catch (IOException ioe) {
                     String msg = "Failed to copy " + fromFile + " to " + toFile
                         + " due to " + ioe.getMessage();
@@ -316,7 +360,10 @@ public class Copy extends Task {
             }
 
             if (count > 0) {
-                log("Copied " + count + " empty directories to " + destDir.getAbsolutePath());
+                log("Copied " + count + 
+                    " empty director" + 
+                    (count==1?"y":"ies") + 
+                    " to " + destDir.getAbsolutePath());
             }
         }
     }

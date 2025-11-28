@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written
  *    permission, please contact apache@apache.org.
@@ -124,6 +124,7 @@ public class MSVSSGET extends MSVSS {
     private String m_Version = null;
     private String m_Date = null;
     private String m_Label = null;
+    private String m_AutoResponse = null;
 
     /**
      * Executes the task.
@@ -153,8 +154,8 @@ public class MSVSSGET extends MSVSS {
         commandLine.createArgument().setValue(getVsspath());
         // -GL
         getLocalpathCommand(commandLine);
-        // -I-
-        commandLine.createArgument().setValue("-I-");  // ignore all errors
+        // -I- or -I-Y or -I-N
+        getAutoresponse(commandLine);
         // -R
         getRecursiveCommand(commandLine);
         // -V
@@ -300,6 +301,35 @@ public class MSVSSGET extends MSVSS {
         } else if (m_Label != null) {
             cmd.createArgument().setValue(FLAG_VERSION_LABEL + m_Label);
         }
+    }
+
+    public void setAutoresponse(String response){
+        if ( response.equals("") || response.equals("null") ) {
+            m_AutoResponse = null;
+        } else {
+            m_AutoResponse = response;
+        }
+    }
+    
+    /**
+     * Checks the value set for the autoResponse.
+     * if it equals "Y" then we return -I-Y
+     * if it equals "N" then we return -I-N
+     * otherwise we return -I
+     */
+    public void getAutoresponse(Commandline cmd) {
+        
+        if ( m_AutoResponse == null) {
+            cmd.createArgument().setValue(FLAG_AUTORESPONSE_DEF);
+        } else if ( m_AutoResponse.equalsIgnoreCase("Y")) {
+            cmd.createArgument().setValue(FLAG_AUTORESPONSE_YES);
+            
+        } else if ( m_AutoResponse.equalsIgnoreCase("N")) {
+            cmd.createArgument().setValue(FLAG_AUTORESPONSE_NO);
+        }else {
+            cmd.createArgument().setValue(FLAG_AUTORESPONSE_DEF);
+        } // end of else
+
     }
 
 }

@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written 
  *    permission, please contact apache@apache.org.
@@ -116,6 +116,7 @@ public class DDCreatorHelper {
         for (int i = 0; i < descriptors.length; ++i) {
             String descriptorName = descriptors[i];
             File descriptorFile = new File(descriptorDirectory, descriptorName);
+
             int extIndex = descriptorName.lastIndexOf(".");
             String serName = null;
             if (extIndex != -1) {
@@ -130,7 +131,7 @@ public class DDCreatorHelper {
             if (!serFile.exists() || serFile.lastModified() < descriptorFile.lastModified()) {
                 
                 String[] args = {"-noexit", 
-                                 "-d", generatedFilesDirectory.getPath(),
+                                 "-d", serFile.getParent(),
                                  "-outputfile", serFile.getName(),
                                  descriptorFile.getPath()};
                 try {

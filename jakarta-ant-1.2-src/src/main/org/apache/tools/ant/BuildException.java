@@ -1,7 +1,7 @@
 /*
  * The Apache Software License, Version 1.1
  *
- * Copyright (c) 1999 The Apache Software Foundation.  All rights
+ * Copyright (c) 1999-2001 The Apache Software Foundation.  All rights
  * reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written
  *    permission, please contact apache@apache.org.
@@ -51,15 +51,16 @@
  * information on the Apache Software Foundation, please see
  * <http://www.apache.org/>.
  */
-
 package org.apache.tools.ant;
+
+
+import java.io.*;
 
 /**
  * Signals an error condition during a build.
  *
  * @author James Duncan Davidson
  */
-
 public class BuildException extends RuntimeException {
 
     /** Exception that might have caused this one. */
@@ -71,18 +72,16 @@ public class BuildException extends RuntimeException {
     /**
      * Constructs a build exception with no descriptive information.
      */
-
     public BuildException() {
-	super();
+        super();
     }
 
     /**
      * Constructs an exception with the given descriptive message.
      * @param msg Description of or information about the exception.
      */
-
     public BuildException(String msg) {
-	super(msg);
+        super(msg);
     }
 
     /**
@@ -91,10 +90,9 @@ public class BuildException extends RuntimeException {
      * @param msg Description of or information about the exception.
      * @param cause Throwable that might have cause this one.
      */
-
     public BuildException(String msg, Throwable cause) {
-	super(msg);
-	this.cause = cause;
+        super(msg);
+        this.cause = cause;
     }
 
     /**
@@ -104,20 +102,18 @@ public class BuildException extends RuntimeException {
      * @param cause Exception that might have cause this one.
      * @param location Location in the project file where the error occured.
      */
-
     public BuildException(String msg, Throwable cause, Location location) {
         this(msg, cause);
-	this.location = location;
+        this.location = location;
     }
 
     /**
      * Constructs an exception with the given exception as a root cause.
      * @param cause Exception that might have caused this one.
      */
-
     public BuildException(Throwable cause) {
-	super(cause.toString());
-	this.cause = cause;
+        super(cause.toString());
+        this.cause = cause;
     }
 
     /**
@@ -126,10 +122,9 @@ public class BuildException extends RuntimeException {
      * @param msg Description of or information about the exception.
      * @param location Location in the project file where the error occured.
      */
-
     public BuildException(String msg, Location location) {
-	super(msg);
-	this.location = location;
+        super(msg);
+        this.location = location;
     }
 
     /**
@@ -138,10 +133,9 @@ public class BuildException extends RuntimeException {
      * @param cause Exception that might have cause this one.
      * @param location Location in the project file where the error occured.
      */
-
     public BuildException(Throwable cause, Location location) {
         this(cause);
-	this.location = location;
+        this.location = location;
     }
 
     /**
@@ -170,5 +164,30 @@ public class BuildException extends RuntimeException {
      */
     public Location getLocation() {
         return location;
+    }
+
+    // Override stack trace methods to show original cause:
+    public void printStackTrace() {
+        printStackTrace(System.err);
+    }
+    
+    public void printStackTrace(PrintStream ps) {
+        synchronized (ps) {
+            ps.println(this);
+            if (cause != null) {
+                ps.println("--- Nested Exception ---");
+                cause.printStackTrace(ps);
+            }
+        }
+    }
+    
+    public void printStackTrace(PrintWriter pw) {
+        synchronized (pw) {
+            pw.println(this);
+            if (cause != null) {
+                pw.println("--- Nested Exception ---");
+                cause.printStackTrace(pw);
+            }
+        }
     }
 }

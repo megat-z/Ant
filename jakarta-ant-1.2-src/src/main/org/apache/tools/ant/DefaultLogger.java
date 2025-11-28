@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written
  *    permission, please contact apache@apache.org.
@@ -66,9 +66,9 @@ public class DefaultLogger implements BuildLogger {
 
     protected PrintStream out;
     protected PrintStream err;
-    protected int msgOutputLevel;
+    protected int msgOutputLevel = Project.MSG_ERR;
     private long startTime = System.currentTimeMillis();
-	
+
     protected static String lSep = System.getProperty("line.separator");
 
     protected boolean emacsMode = false;
@@ -78,6 +78,12 @@ public class DefaultLogger implements BuildLogger {
      *
      * Only messages with a message level lower than or equal to the given level are 
      * output to the log.
+     * <P>
+     * Constants for the message levels are in Project.java. The order of
+     * the levels, from least to most verbose, is MSG_ERR, MSG_WARN,
+     * MSG_INFO, MSG_VERBOSE, MSG_DEBUG.
+     *
+     * The default message level for DefaultLogger is Project.MSG_ERR.
      *
      * @param level the logging level for the logger.
      */
@@ -132,24 +138,14 @@ public class DefaultLogger implements BuildLogger {
         else {
             err.println(lSep + "BUILD FAILED" + lSep);
 
-            if (error instanceof BuildException) {
-                err.println(error.toString());
-
-                Throwable nested = ((BuildException)error).getException();
-                if (nested != null) {
-                    nested.printStackTrace(err);
-                }
-            }
-            else {
-                error.printStackTrace(err);
-            }
+            error.printStackTrace(err);
         }
 
         out.println(lSep + "Total time: " + formatTime(System.currentTimeMillis() - startTime));
     }
 
     public void targetStarted(BuildEvent event) {
-        if (msgOutputLevel <= Project.MSG_INFO) {
+        if (Project.MSG_INFO <= msgOutputLevel) {
             out.println(lSep + event.getTarget().getName() + ":");
         }
     }

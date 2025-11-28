@@ -1,37 +1,37 @@
 /*
  * The Apache Software License, Version 1.1
- * 
- * Copyright (c) 1999 The Apache Software Foundation.  All rights
+ *
+ * Copyright (c) 2000 The Apache Software Foundation.  All rights 
  * reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
- * notice, this list of conditions and the following disclaimer.
- * 
+ *    notice, this list of conditions and the following disclaimer. 
+ *
  * 2. Redistributions in binary form must reproduce the above copyright
- * notice, this list of conditions and the following disclaimer in
- * the documentation and/or other materials provided with the
- * distribution.
- * 
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ *
  * 3. The end-user documentation included with the redistribution, if
- * any, must include the following acknowlegement:
- * "This product includes software developed by the
- * Apache Software Foundation (http://www.apache.org/)."
- * Alternately, this acknowlegement may appear in the software itself,
- * if and wherever such third-party acknowlegements normally appear.
- * 
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
- * Foundation" must not be used to endorse or promote products derived
- * from this software without prior written permission. For written
- * permission, please contact apache@apache.org.
- * 
+ *    any, must include the following acknowlegement:  
+ *       "This product includes software developed by the 
+ *        Apache Software Foundation (http://www.apache.org/)."
+ *    Alternately, this acknowlegement may appear in the software itself,
+ *    if and wherever such third-party acknowlegements normally appear.
+ *
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
+ *    Foundation" must not be used to endorse or promote products derived
+ *    from this software without prior written permission. For written 
+ *    permission, please contact apache@apache.org.
+ *
  * 5. Products derived from this software may not be called "Apache"
- * nor may "Apache" appear in their names without prior written
- * permission of the Apache Group.
- * 
+ *    nor may "Apache" appear in their names without prior written
+ *    permission of the Apache Group.
+ *
  * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESSED OR IMPLIED
  * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -45,12 +45,13 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * ====================================================================
- * 
+ *
  * This software consists of voluntary contributions made by many
  * individuals on behalf of the Apache Software Foundation.  For more
  * information on the Apache Software Foundation, please see
  * <http://www.apache.org/>.
  */
+
 package org.apache.tools.ant.taskdefs;
 
 import org.apache.tools.ant.*;
@@ -68,17 +69,20 @@ import java.util.*;
  * to provide backwards compatibility for a release.  The future position
  * is to use nested filesets exclusively.</p>
  * 
- * @author stefano@apache.org
+ * @author Stefano Mazzocchi <a href="mailto:stefano@apache.org">stefano@apache.org</a>
  * @author Tom Dimock <a href="mailto:tad1@cornell.edu">tad1@cornell.edu</a>
  * @author Glenn McAllister <a href="mailto:glennm@ca.ibm.com">glennm@ca.ibm.com</a>
+ * @author Jon S. Stevens <a href="mailto:jon@latchkey.com">jon@latchkey.com</a>
  */
 public class Delete extends MatchingTask {
     protected File file = null;
     protected File dir = null;
     protected Vector filesets = new Vector();
     protected boolean usedMatchingTask = false;
+    protected boolean includeEmpty = false;	// by default, remove matching empty dirs
 
     private int verbosity = Project.MSG_VERBOSE;
+    private boolean quiet = false;
 
     /**
      * Set the name of a single file to be removed.
@@ -112,6 +116,26 @@ public class Delete extends MatchingTask {
     } 
 
     /**
+     * If the file does not exist, do not display a diagnostic 
+     * message or modify the exit status to reflect an error.
+     * This means that if a file or directory cannot be deleted,
+     * then no error is reported. This setting emulates the 
+     * -f option to the Unix &quot;rm&quot; command.
+     * Default is false meaning things are &quot;noisy&quot;
+     * @param quiet "true" or "on"
+     */
+    public void setQuiet(boolean quiet) {
+        this.quiet = quiet;
+    } 
+
+    /**
+     * Used to delete empty directories.
+     */
+    public void setIncludeEmptyDirs(boolean includeEmpty) {
+        this.includeEmpty = includeEmpty;
+    }
+
+   /**
      * Adds a set of files (nested fileset attribute).
      */
     public void addFileset(FileSet set) {
@@ -218,7 +242,7 @@ public class Delete extends MatchingTask {
                 } else {
                     log("Deleting: " + file.getAbsolutePath());
   
-                    if (!file.delete()) {
+                    if (!file.delete() && !quiet) {
                         throw new BuildException("Unable to delete file " + file.getAbsolutePath());
                     } 
                 } 
@@ -229,7 +253,15 @@ public class Delete extends MatchingTask {
 
         // delete the directory
         if (dir != null && dir.exists() && dir.isDirectory() && !usedMatchingTask) {
-            log("Deleting directory " + dir.getAbsolutePath());
+            /*
+               If verbosity is MSG_VERBOSE, that mean we are doing regular logging
+               (backwards as that sounds).  In that case, we want to print one 
+               message about deleting the top of the directory tree.  Otherwise, 
+               the removeDir method will handle messages for _all_ directories.
+             */
+            if (verbosity == Project.MSG_VERBOSE) {
+                log("Deleting directory " + dir.getAbsolutePath());
+            }
             removeDir(dir);
         }
 
@@ -238,14 +270,16 @@ public class Delete extends MatchingTask {
             FileSet fs = (FileSet) filesets.elementAt(i);
             DirectoryScanner ds = fs.getDirectoryScanner(project);
             String[] files = ds.getIncludedFiles();
-            removeFiles(fs.getDir(project), files);
+            String[] dirs = ds.getIncludedDirectories();
+            removeFiles(fs.getDir(project), files, dirs);
         }
 
         // delete the files from the default fileset
         if (usedMatchingTask && dir != null) {
             DirectoryScanner ds = super.getDirectoryScanner(dir);
-            String [] files = ds.getIncludedFiles();
-            removeFiles(dir, files);
+            String[] files = ds.getIncludedFiles();
+            String[] dirs = ds.getIncludedDirectories();
+            removeFiles(dir, files, dirs);
         }
     } 
 
@@ -255,6 +289,7 @@ public class Delete extends MatchingTask {
 
     protected void removeDir(File d) {
         String[] list = d.list();
+        if (list == null) list = new String[0];
         for (int i = 0; i < list.length; i++) {
             String s = list[i];
             File f = new File(d, s);
@@ -262,26 +297,48 @@ public class Delete extends MatchingTask {
                 removeDir(f);
             } else {
                 log("Deleting " + f.getAbsolutePath(), verbosity);
-                if (!f.delete()) {
+                if (!f.delete() && !quiet) {
                     throw new BuildException("Unable to delete file " + f.getAbsolutePath());
                 }
             }
         }
         log("Deleting directory " + d.getAbsolutePath(), verbosity);
-        if (!d.delete()) {
+        if (!d.delete() && !quiet) {
             throw new BuildException("Unable to delete directory " + dir.getAbsolutePath());
         }
     }
 
-    protected void removeFiles(File d, String[] files) {
+    protected void removeFiles(File d, String[] files, String[] dirs) {
         if (files.length > 0) {
             log("Deleting " + files.length + " files from " + d.getAbsolutePath());
             for (int j=0; j<files.length; j++) {
                 File f = new File(d, files[j]);
                 log("Deleting " + f.getAbsolutePath(), verbosity);
-                if (!f.delete()) {
+                if (!f.delete() && !quiet) {
                     throw new BuildException("Unable to delete file " + f.getAbsolutePath());
                 }
+            }
+        }
+
+        if (dirs.length > 0 && includeEmpty) {
+            int dirCount = 0;
+            for (int j=0; j<dirs.length; j++) {
+                File dir = new File(d, dirs[j]);
+                String[] dirFiles = dir.list();
+                if (dirFiles == null || dirFiles.length == 0) {
+                    log("Deleting " + dir.getAbsolutePath(), verbosity);
+                    if (!dir.delete() && !quiet) {
+                        throw new BuildException("Unable to delete directory " + dir.getAbsolutePath());
+                    } else {
+                        dirCount++;
+                    }
+                }
+            }
+
+            if (dirCount > 0) {
+                log("Deleted " + dirCount + " director" + 
+                    (dirCount==1 ? "y" : "ies") + 
+                    " from " + d.getAbsolutePath());
             }
         }
     }

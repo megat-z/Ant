@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written
  *    permission, please contact apache@apache.org.
@@ -98,10 +98,23 @@ public class ProjectHelper {
      * Parses the project file.
      */
     private void parse() throws BuildException {
+        FileInputStream inputStream = null;
+        InputSource inputSource = null;
+        
         try {
             SAXParser saxParser = getParserFactory().newSAXParser();
             parser = saxParser.getParser();
-            saxParser.parse(buildFile, new RootHandler());
+
+            String uri = "file:" + buildFile.getAbsolutePath().replace('\\', '/');
+            for (int index = uri.indexOf('#'); index != -1; index = uri.indexOf('#')) {
+                uri = uri.substring(0, index) + "%23" + uri.substring(index+1);
+            }
+            
+            inputStream = new FileInputStream(buildFile);
+            inputSource = new InputSource(inputStream);
+            inputSource.setSystemId(uri);
+            project.log("parsing buildfile " + buildFile + " with URI = " + uri, Project.MSG_VERBOSE);
+            saxParser.parse(inputSource, new RootHandler());
         }
         catch(ParserConfigurationException exc) {
             throw new BuildException("Parser has not been configured correctly", exc);
@@ -133,6 +146,16 @@ public class ProjectHelper {
         }
         catch(IOException exc) {
             throw new BuildException("Error reading project file", exc);
+        }
+        finally {
+            if (inputStream != null) {
+                try {
+                    inputStream.close();
+                }
+                catch (IOException ioe) {
+                    // ignore this
+                }
+            }
         }
     }
 
@@ -170,8 +193,15 @@ public class ProjectHelper {
             }
         }
 
+        /**
+         * Called when this element and all elements nested into it have been
+         * handeled.
+         */
+        protected void finished() {}
+
         public void endElement(String name) throws SAXException {
 
+            finished();
             // Let parent resume handling SAX events
             parser.setDocumentHandler(parentHandler);
         }
@@ -187,16 +217,37 @@ public class ProjectHelper {
          */
         public InputSource resolveEntity(String publicId,
                                          String systemId) {
-
+        
+            project.log("resolving systemId: " + systemId, Project.MSG_VERBOSE);
+        
             if (systemId.startsWith("file:")) {
                 String path = systemId.substring(5);
+                int index = path.indexOf("file:");
+                
+                // we only have to handle these for backward compatibility
+                // since they are in the FAQ.
+                while (index != -1) {
+                    path = path.substring(0, index) + path.substring(index + 5);
+                    index = path.indexOf("file:");
+                }
+                
+                String entitySystemId = path;
+                index = path.indexOf("%23");
+                // convert these to #
+                while (index != -1) {
+                    path = path.substring(0, index) + "#" + path.substring(index + 3);
+                    index = path.indexOf("%23");
+                }
+
                 File file = new File(path);
                 if (!file.isAbsolute()) {
                     file = new File(buildFileParent, path);
                 }
                 
                 try {
-                    return new InputSource(new FileInputStream(file));
+                    InputSource inputSource = new InputSource(new FileInputStream(file));
+                    inputSource.setSystemId("file:" + entitySystemId);
+                    return inputSource;
                 } catch (FileNotFoundException fne) {
                     project.log(file.getAbsolutePath()+" could not be found", 
                                 Project.MSG_WARN);
@@ -250,10 +301,18 @@ public class ProjectHelper {
                 }
             }
 
+            if (def == null) {
+                throw new SAXParseException("The default attribute of project is required", 
+                                            locator);
+            }
+            
+
             project.setDefaultTarget(def);
 
-            project.setName(name);
-            if (name != null) project.addReference(name, project);
+            if (name != null) {
+                project.setName(name);
+                project.addReference(name, project);
+            }
 
             if (id != null) project.addReference(id, project);
 
@@ -289,11 +348,11 @@ public class ProjectHelper {
         }
 
         private void handleTaskdef(String name, AttributeList attrs) throws SAXParseException {
-            new TaskHandler(this, null).init(name, attrs);
+            (new TaskHandler(this, null)).init(name, attrs);
         }
 
         private void handleProperty(String name, AttributeList attrs) throws SAXParseException {
-            new TaskHandler(this, null).init(name, attrs);
+            (new TaskHandler(this, null)).init(name, attrs);
         }
 
         private void handleTarget(String tag, AttributeList attrs) throws SAXParseException {
@@ -303,6 +362,7 @@ public class ProjectHelper {
         private void handleDataType(String name, AttributeList attrs) throws SAXParseException {
             new DataTypeHandler(this).init(name, attrs);
         }
+
     }
 
     /**
@@ -414,6 +474,11 @@ public class ProjectHelper {
             } else {
                 task.init();
                 configure(task, attrs, project);
+            }
+        }
+
+        protected void finished() {
+            if (task != null && target == null) {
                 task.execute();
             }
         }
@@ -548,7 +613,7 @@ public class ProjectHelper {
 
         for (int i = 0; i < attrs.getLength(); i++) {
             // reflect these into the target
-            String value=replaceProperties(attrs.getValue(i), 
+            String value=replaceProperties(project, attrs.getValue(i), 
                                            project.getProperties() );
             try {
                 ih.setAttribute(project, target, 
@@ -590,7 +655,7 @@ public class ProjectHelper {
 
     /** Replace ${NAME} with the property value
      */
-    public static String replaceProperties( String value, Hashtable keys )
+    public static String replaceProperties(Project project, String value, Hashtable keys )
         throws BuildException
     {
         // XXX use Map instead of proj, it's too heavy
@@ -619,8 +684,12 @@ public class ProjectHelper {
                                              value );
                 }
                 String n=value.substring( pos+2, endName );
-                String v= (keys.containsKey(n)) ? (String) keys.get( n ) 
-                    : "${"+n+"}";
+                if (!keys.containsKey(n)) {
+                    project.log("Property ${" + n + "} has not been set", Project.MSG_VERBOSE);
+                }
+                
+                String v = (keys.containsKey(n)) ? (String) keys.get(n) : "${"+n+"}"; 
+                
                 //System.out.println("N: " + n + " " + " V:" + v);
                 sb.append( v );
                 prev=endName+1;

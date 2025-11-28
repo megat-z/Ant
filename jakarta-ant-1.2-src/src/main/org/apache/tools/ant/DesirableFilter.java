@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written 
  *    permission, please contact apache@apache.org.
@@ -55,8 +55,8 @@
 package org.apache.tools.ant;
 
 import java.io.File;
-import java.io.IOException;
 import java.io.FilenameFilter;
+import java.io.IOException;
 
 /**
  * Filters filenames to determine whether or not the file is desirable.
@@ -64,7 +64,6 @@ import java.io.FilenameFilter;
  * @author Jason Hunter [jhunter@servlets.com]
  * @author james@x180.com
  */
-
 public class DesirableFilter implements FilenameFilter {
 
     /**
@@ -73,40 +72,40 @@ public class DesirableFilter implements FilenameFilter {
      */
 
     public boolean accept(File dir, String name) {
+        
+        // emacs save file
+        if (name.endsWith("~")) {
+            return false;
+        }
 
-	// emacs save file
-	if (name.endsWith("~")) {
-	    return false;
-	}
+        // emacs autosave file
+        if (name.startsWith("#") && name.endsWith("#")) {
+            return false;
+        }
 
-	// emacs autosave file
-	if (name.startsWith("#") && name.endsWith("#")) {
-	    return false;
-	}
+        // openwindows text editor does this I think
+        if (name.startsWith("%") && name.endsWith("%")) {
+            return false;
+        }
 
-	// openwindows text editor does this I think
-	if (name.startsWith("%") && name.endsWith("%")) {
-	    return false;
-	}
-
-	/* CVS stuff -- hopefully there won't be a case with
-	 * an all cap file/dir named "CVS" that somebody wants
-	 * to keep around...
-	 */
-	
-	if (name.equals("CVS")) {
-	    return false;
-	}
-	
-    /* If we are going to ignore CVS might as well ignore 
-     * this one as well...
-     */
-    if (name.equals(".cvsignore")){
-        return false;
-    }
+        /* CVS stuff -- hopefully there won't be a case with
+         * an all cap file/dir named "CVS" that somebody wants
+         * to keep around...
+         */
+        
+        if (name.equals("CVS")) {
+            return false;
+        }
+        
+        /* If we are going to ignore CVS might as well ignore 
+         * this one as well...
+         */
+        if (name.equals(".cvsignore")){
+            return false;
+        }
     
-	// default
-	return true;
+        // default
+        return true;
     }
 }
 

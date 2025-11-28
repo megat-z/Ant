@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written
  *    permission, please contact apache@apache.org.
@@ -85,6 +85,18 @@ public class ReplaceTest extends TaskdefsTest {
 
     public void test5() { 
         executeTarget("test5");
+    }
+
+    public void test6() { 
+        expectBuildException("test6", "required argument not specified");
+    }
+
+    public void test7() { 
+        expectBuildException("test7", "empty token not allowed");
+    }
+
+    public void test8() { 
+        executeTarget("test8");
     }
 
 }

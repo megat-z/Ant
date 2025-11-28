@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written
  *    permission, please contact apache@apache.org.
@@ -55,6 +55,7 @@
 package org.apache.tools.ant.taskdefs;
 
 import org.apache.tools.ant.*;
+import org.apache.tools.ant.types.Path;
 import org.apache.tools.ant.types.Reference;
 import java.io.*;
 import java.util.*;
@@ -73,6 +74,8 @@ public class Property extends Task {
     protected String value;
     protected File file;
     protected String resource;
+    protected Path classpath;
+    protected String env;
     protected Reference ref = null;
 
     protected boolean userProperty=false; // set read-only properties
@@ -121,6 +124,33 @@ public class Property extends Task {
         return resource;
     }
 
+    public void setEnvironment(String env) {
+        this.env = env;
+    }
+
+    public String getEnvironment() {
+        return env;
+    }
+
+    public void setClasspath(Path classpath) {
+        if (this.classpath == null) {
+            this.classpath = classpath;
+        } else {
+            this.classpath.append(classpath);
+        }
+    }
+    
+    public Path createClasspath() {
+        if (this.classpath == null) {
+            this.classpath = new Path(project);
+        }
+        return this.classpath.createPath();
+    }
+    
+    public void setClasspathRef(Reference r) {
+        createClasspath().setRefid(r);
+    }
+
     public void setUserProperty(boolean userProperty) {
         this.userProperty = userProperty;
     }
@@ -138,6 +168,8 @@ public class Property extends Task {
             if (file != null) loadFile(file);
 
             if (resource != null) loadResource(resource);
+
+            if (env != null) loadEnvironment(env);
 
             if ((name != null) && (ref != null)) {
                 Object obj = ref.getReferencedObject(getProject());
@@ -178,13 +210,47 @@ public class Property extends Task {
         Properties props = new Properties();
         log("Resource Loading " + name, Project.MSG_VERBOSE);
         try {
-            InputStream is = this.getClass().getResourceAsStream(name);
+            ClassLoader cL = null; 
+            InputStream is = null;
+
+            if (classpath != null) { 
+                cL = new AntClassLoader(project, classpath, false); 
+            } else { 
+                cL = this.getClass().getClassLoader(); 
+            } 
+
+            if (cL == null) {
+                is = ClassLoader.getSystemResourceAsStream(name);
+            } else {
+                is = cL.getResourceAsStream(name);
+            }
+            
             if (is != null) {
                 props.load(is);
                 addProperties(props);
+            } else {
+                log("Unable to find resource " + name, Project.MSG_WARN);
             }
         } catch (Exception ex) {
             ex.printStackTrace();
+        }
+    }
+
+    protected void loadEnvironment( String prefix ) {
+        Properties props = new Properties();
+        if (!prefix.endsWith(".")) prefix += ".";
+        log("Loading Environment " + prefix, Project.MSG_VERBOSE);
+        try {
+            Vector osEnv = Execute.getProcEnvironment();
+            for (Enumeration e = osEnv.elements(); e.hasMoreElements(); ) {
+                String entry = (String)e.nextElement();
+                int pos = entry.indexOf('=');
+                props.put(prefix + entry.substring(0, pos), 
+                          entry.substring(pos + 1));
+            }
+            addProperties(props);
+        } catch (Exception ex) {
+            throw new BuildException(ex, location);
         }
     }
 
@@ -194,7 +260,7 @@ public class Property extends Task {
         while (e.hasMoreElements()) {
             String name = (String) e.nextElement();
             String value = (String) props.getProperty(name);
-            String v = ProjectHelper.replaceProperties(value, project.getProperties());
+            String v = ProjectHelper.replaceProperties(project, value, project.getProperties());
             addProperty(name, value);
         }
     }
@@ -251,9 +317,9 @@ public class Property extends Task {
                 }
     
                 if (!resolved) {
-                    value = ProjectHelper.replaceProperties(value,
+                    value = ProjectHelper.replaceProperties(project, value,
                                                                project.getProperties());
-                    value = ProjectHelper.replaceProperties(value, props);
+                    value = ProjectHelper.replaceProperties(project, value, props);
                     props.put(name, value);
                 }    
             }

@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written
  *    permission, please contact apache@apache.org.
@@ -53,14 +53,14 @@
  */
 package org.apache.tools.ant.taskdefs;
 
+import java.io.File;
 import org.apache.tools.ant.*;
 import org.apache.tools.ant.types.Commandline;
-import java.io.File;
 
 /**
  * Sign a archive.
  * 
- * @author Peter Donald <a href="mailto:donaldp@mad.scientist.com">donaldp@mad.scientist.com</a>
+ * @author Peter Donald <a href="mailto:donaldp@apache.org">donaldp@apache.org</a>
  */
 public class SignJar extends Task {
 
@@ -119,16 +119,16 @@ public class SignJar extends Task {
         this.signedjar = signedjar;
     } 
 
-    public void setVerbose(final String verbose) {
-        this.verbose = project.toBoolean(verbose);
+    public void setVerbose(final boolean verbose) {
+        this.verbose = verbose;
     } 
 
-    public void setInternalsf(final String internalsf) {
-        this.internalsf = project.toBoolean(internalsf);
+    public void setInternalsf(final boolean internalsf) {
+        this.internalsf = internalsf;
     } 
 
-    public void setSectionsonly(final String sectionsonly) {
-        this.sectionsonly = project.toBoolean(sectionsonly);
+    public void setSectionsonly(final boolean sectionsonly) {
+        this.sectionsonly = sectionsonly;
     } 
 
     public void execute() throws BuildException {
@@ -148,72 +148,81 @@ public class SignJar extends Task {
             throw new BuildException("storepass attribute must be set");
         } 
 
+        if(isUpToDate()) return;
+
         final StringBuffer sb = new StringBuffer();
 
-        sb.append("jarsigner ");
-
+        final ExecTask cmd = (ExecTask) project.createTask("exec");
+        cmd.setExecutable("jarsigner");
+        
         if (null != keystore) {
-            sb.append("-keystore \"");
-            sb.append(keystore);
-            sb.append("\" ");
+            cmd.createArg().setValue("-keystore");
+            cmd.createArg().setValue(keystore);
         } 
 
         if (null != storepass) {
-            sb.append("-storepass \"");
-            sb.append(storepass);
-            sb.append("\" ");
+            cmd.createArg().setValue("-storepass");
+            cmd.createArg().setValue(storepass);
         } 
 
         if (null != storetype) {
-            sb.append("-storetype \"");
-            sb.append(storetype);
-            sb.append("\" ");
+            cmd.createArg().setValue("-storetype");
+            cmd.createArg().setValue(storetype);
         } 
 
         if (null != keypass) {
-            sb.append("-keypass \"");
-            sb.append(keypass);
-            sb.append("\" ");
+            cmd.createArg().setValue("-keypass");
+            cmd.createArg().setValue(keypass);
         } 
 
         if (null != sigfile) {
-            sb.append("-sigfile \"");
-            sb.append(sigfile);
-            sb.append("\" ");
+            cmd.createArg().setValue("-sigfile");
+            cmd.createArg().setValue(sigfile);
         } 
 
         if (null != signedjar) {
-            sb.append("-signedjar \"");
-            sb.append(signedjar);
-            sb.append("\" ");
+            cmd.createArg().setValue("-signedjar");
+            cmd.createArg().setValue(signedjar);
         } 
 
         if (verbose) {
-            sb.append("-verbose ");
+            cmd.createArg().setValue("-verbose");
         } 
 
         if (internalsf) {
-            sb.append("-internalsf ");
+            cmd.createArg().setValue("-internalsf");
         } 
 
         if (sectionsonly) {
-            sb.append("-sectionsonly ");
+            cmd.createArg().setValue("-sectionsonly");
         } 
 
-        sb.append('\"');
-        sb.append(jar);
-        sb.append("\" ");
+        cmd.createArg().setValue(jar);
         
-        sb.append('\"');
-        sb.append(alias);
-        sb.append("\" ");
+
+        cmd.createArg().setValue(alias);
 
         log("Signing Jar : " + (new File(jar)).getAbsolutePath());
-        final ExecTask cmd = (ExecTask) project.createTask("exec");
-        cmd.setCommand(new Commandline(sb.toString()));
         cmd.setFailonerror(true);
         cmd.setTaskName( getTaskName() );
         cmd.execute();
-    } 
+    }
+
+    protected boolean isUpToDate() {
+
+        if( null != jar && null != signedjar ) {
+
+            final File jarFile = new File(jar);
+            final File signedjarFile = new File(signedjar);
+            
+            if(!jarFile.exists()) return false;
+            if(!signedjarFile.exists()) return false;
+            if(jarFile.equals(signedjarFile)) return false;
+            if(signedjarFile.lastModified() > jarFile.lastModified())
+                return true;
+        }
+
+        return false;
+    }
 }
 

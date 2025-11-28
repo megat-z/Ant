@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written 
  *    permission, please contact apache@apache.org.
@@ -53,11 +53,9 @@
  */
 package org.apache.tools.ant.taskdefs.optional.ejb;
 
-import org.apache.tools.ant.BuildException;
-import org.apache.tools.ant.DirectoryScanner;
-import org.apache.tools.ant.Project;
+import org.apache.tools.ant.*;
 import org.apache.tools.ant.taskdefs.*;
-import org.apache.tools.ant.types.Path;
+import org.apache.tools.ant.types.*;
 
 import java.io.File;
 
@@ -126,9 +124,11 @@ public class DDCreator extends MatchingTask {
         String systemClassPath = System.getProperty("java.class.path");
         String execClassPath = project.translatePath(systemClassPath + ":" + classpath);
         Java ddCreatorTask = (Java)project.createTask("java");
+        ddCreatorTask.setTaskName(getTaskName());
         ddCreatorTask.setFork(true);
         ddCreatorTask.setClassname("org.apache.tools.ant.taskdefs.optional.ejb.DDCreatorHelper");
-        ddCreatorTask.setArgs(args);
+        Commandline.Argument arguments = ddCreatorTask.createArg();
+        arguments.setLine(args);
         ddCreatorTask.setClasspath(new Path(project, execClassPath));                         
         if (ddCreatorTask.executeJava() != 0) {                         
             throw new BuildException("Execution of ddcreator helper failed");

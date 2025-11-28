@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written 
  *    permission, please contact apache@apache.org.
@@ -103,17 +103,17 @@ public class GZip extends Task {
         } catch (IOException ioe) {
             String msg = "Problem creating gzip " + ioe.getMessage();
             throw new BuildException(msg, ioe, location);
-	} finally {
-	    if (zOut != null) {
-	        try {
+        } finally {
+            if (zOut != null) {
+                try {
                     // close up
-	            zOut.close();
-	        }
-	        catch (IOException e) {}
-	    }
+                    zOut.close();
+                }
+                catch (IOException e) {}
+            }
         }
     }
-
+    
     private void zipFile(InputStream in, GZIPOutputStream zOut)
         throws IOException
     {        

@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written
  *    permission, please contact apache@apache.org.
@@ -285,6 +285,18 @@ public class TarInputStream extends FilterInputStream {
             // REVIEW How do we resolve this discrepancy?!
             this.entrySize = (int) this.currEntry.getSize();
         } 
+
+        if (this.currEntry != null && this.currEntry.isGNULongNameEntry()) {
+            // read in the name
+            StringBuffer longName = new StringBuffer();
+            byte[] buffer = new byte[256];
+            int length = 0;
+            while ((length = read(buffer)) >= 0) {
+                longName.append(new String(buffer, 0, length));
+            }
+            getNextEntry();
+            this.currEntry.setName(longName.toString());
+        }
 
         return this.currEntry;
     } 

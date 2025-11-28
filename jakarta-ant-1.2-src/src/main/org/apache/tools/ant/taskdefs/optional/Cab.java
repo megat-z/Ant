@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written 
  *    permission, please contact apache@apache.org.
@@ -295,50 +295,66 @@ public class Cab extends MatchingTask {
     }
 
     public void execute() throws BuildException {
-        // we must be on Windows to continue
-        if (!isWindows)
-        {
-            log("cannot run on non-Windows platforms: " + myos,
-                Project.MSG_VERBOSE);
-            return;
-        }
-        
+
         checkConfiguration();
 
         Vector files = getFileList();
-        
+    
         // quick exit if the target is up to date
         if (isUpToDate(files)) return;
 
         log("Building "+ archiveType +": "+ cabFile.getAbsolutePath());
 
-        try {
-            File listFile = createListFile(files);
-            ExecTask exec = createExec();
-            File outFile = null;
+        // we must be on Windows to continue
+        if (!isWindows) {
+            log("Using listcab/libcabinet", Project.MSG_VERBOSE);
             
-            // die if cabarc fails
-            exec.setFailonerror(true);
-            exec.setDir(baseDir);
+            StringBuffer sb = new StringBuffer();
             
-            if (!doVerbose)
-            {
-                outFile = createTempFile("ant", null);
-                exec.setOutput(outFile);
+            Enumeration fileEnum = files.elements();
+            
+            while (fileEnum.hasMoreElements()) {
+                sb.append(fileEnum.nextElement()).append("\n");
             }
+            sb.append("\n").append(cabFile.getAbsolutePath()).append("\n");
+            
+            try {
+                Process p = Runtime.getRuntime().exec("listcab");
+                OutputStream out = p.getOutputStream();
+                out.write(sb.toString().getBytes());
+                out.flush();
+                out.close();
+            } catch (IOException ex) {
+                String msg = "Problem creating " + cabFile + " " + ex.getMessage();
+                throw new BuildException(msg);
+            }
+        } else {
+            try {
+                File listFile = createListFile(files);
+                ExecTask exec = createExec();
+                File outFile = null;
                 
-            exec.setCommand(createCommand(listFile));
-            exec.execute();
-
-            if (outFile != null)
-            {
-                outFile.delete();
+                // die if cabarc fails
+                exec.setFailonerror(true);
+                exec.setDir(baseDir);
+                
+                if (!doVerbose) {
+                    outFile = createTempFile("ant", null);
+                    exec.setOutput(outFile);
+                }
+                    
+                exec.setCommand(createCommand(listFile));
+                exec.execute();
+    
+                if (outFile != null) {
+                    outFile.delete();
+                }
+                
+                listFile.delete();
+            } catch (IOException ioe) {
+                String msg = "Problem creating " + cabFile + " " + ioe.getMessage();
+                throw new BuildException(msg);
             }
-            
-            listFile.delete();
-        } catch (IOException ioe) {
-            String msg = "Problem creating " + cabFile + " " + ioe.getMessage();
-            throw new BuildException(msg);
         }
     }
 }

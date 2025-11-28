@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written
  *    permission, please contact apache@apache.org.
@@ -69,21 +69,21 @@ public class EchoTest extends TaskdefsTest {
     
     // Output an empty String
     public void test1() { 
-        expectOutput("test1", "\n");
+        expectLog("test1", "");
     }
 
     // Output 'OUTPUT OF ECHO'
     public void test2() { 
-        expectOutput("test2", "OUTPUT OF ECHO\n");
+        expectLog("test2", "OUTPUT OF ECHO");
     }
     
     public void test3() { 
-        expectOutput("test3", "\n"+
+        expectLog("test3", "\n"+
                               "    This \n"+
                               "    is\n"+
                               "    a \n"+
                               "    multiline\n"+
                               "    message\n"+
-                              "    \n");
+                              "    ");
     }
 }

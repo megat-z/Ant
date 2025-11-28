@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written 
  *    permission, please contact apache@apache.org.
@@ -55,6 +55,7 @@
 package org.apache.tools.ant.taskdefs;
 
 import org.apache.tools.ant.*;
+import org.apache.tools.ant.types.ZipFileSet;
 
 import java.io.*;
 import java.util.zip.*;
@@ -68,83 +69,74 @@ import java.util.zip.*;
 public class Jar extends Zip {
 
     private File manifest;    
-    
+    private boolean manifestAdded;    
+
     public Jar() {
         super();
-	archiveType = "jar";
+        archiveType = "jar";
         emptyBehavior = "create";
     }
 
     public void setJarfile(File jarFile) {
-	super.setZipfile(jarFile);
+        super.setZipfile(jarFile);
     }
-    
+
     public void setManifest(File manifestFile) {
-	manifest = manifestFile;
+        manifest = manifestFile;
+        if (!manifest.exists())
+            throw new BuildException("Manifest file: " + manifest + " does not exist.");
+
+        // Create a ZipFileSet for this file, and pass it up.
+        ZipFileSet fs = new ZipFileSet();
+        fs.setDir(new File(manifest.getParent()));
+        fs.setIncludes(manifest.getName());
+        fs.setFullpath("META-INF/MANIFEST.MF");
+        super.addFileset(fs);
     }
+
 
     protected void initZipOutputStream(ZipOutputStream zOut)
-	throws IOException, BuildException
+        throws IOException, BuildException
     {
-	// add manifest first
-	if (manifest != null) {
-            zipDir(new File(manifest.getParent()), zOut, "META-INF/");
-	    super.zipFile(manifest, zOut, "META-INF/MANIFEST.MF");
-	} else {
-	    String s = "/org/apache/tools/ant/defaultManifest.mf";
-	    InputStream in = this.getClass().getResourceAsStream(s);
+        // If no manifest is specified, add the default one.
+        if (manifest == null) {
+            String s = "/org/apache/tools/ant/defaultManifest.mf";
+            InputStream in = this.getClass().getResourceAsStream(s);
             if ( in == null )
-		throw new BuildException ( "Could not find: " + s );
-	    zipDir(null, zOut, "META-INF/");
-	    zipFile(in, zOut, "META-INF/MANIFEST.MF", System.currentTimeMillis());
- 	}
-     }
-
-    protected boolean isUpToDate(FileScanner[] scanners, File zipFile) throws BuildException
-    {
-        File[] files = grabFiles(scanners);
-
-        if (manifest != null) {
-            // just add the manifest file to the mix
-
-            DirectoryScanner ds = new DirectoryScanner();
-            ds.setBasedir(new File(manifest.getParent()));
-            ds.setIncludes(new String[] {manifest.getName()});
-            ds.scan();
-
-            FileScanner[] myScanners = new FileScanner[scanners.length+1];
-            System.arraycopy(scanners, 0, myScanners, 0, scanners.length);
-            myScanners[scanners.length] = ds;
-
-            boolean retval = super.isUpToDate(myScanners, zipFile);
-            if (!retval && files.length == 0) {
-                log("Note: creating empty "+archiveType+" archive " + zipFile, 
-                    Project.MSG_INFO);
-            }
-            return retval;
-
-        } else if (emptyBehavior.equals("create") && files.length == 0) {
-
-            log("Note: creating empty "+archiveType+" archive " + zipFile, 
-                Project.MSG_INFO);
-            return false;
-
-        } else {
-            // all other cases are handled correctly by Zip's method
-            return super.isUpToDate(scanners, zipFile);
+                throw new BuildException ( "Could not find: " + s );
+            zipDir(null, zOut, "META-INF/");
+            zipFile(in, zOut, "META-INF/MANIFEST.MF", System.currentTimeMillis());
         }
+
+        super.initZipOutputStream(zOut);
     }
 
     protected void zipFile(File file, ZipOutputStream zOut, String vPath)
         throws IOException
     {
-        // We already added a META-INF/MANIFEST.MF
-        if (!vPath.equalsIgnoreCase("META-INF/MANIFEST.MF")) {
-            super.zipFile(file, zOut, vPath);
+        // If the file being added is META-INF/MANIFEST.MF, we warn if it's not the
+        // one specified in the "manifest" attribute - or if it's being added twice, 
+        // meaning the same file is specified by the "manifeset" attribute and in
+        // a <fileset> element.
+        if (vPath.equalsIgnoreCase("META-INF/MANIFEST.MF"))  {
+            if (manifest == null || !manifest.equals(file) || manifestAdded) {
+                log("Warning: selected "+archiveType+" files include a META-INF/MANIFEST.MF which will be ignored " +
+                    "(please use manifest attribute to "+archiveType+" task)", Project.MSG_WARN);
+            } else {
+                super.zipFile(file, zOut, vPath);
+                manifestAdded = true;
+            }
         } else {
-            log("Warning: selected "+archiveType+" files include a META-INF/MANIFEST.MF which will be ignored " +
-                "(please use manifest attribute to "+archiveType+" task)", Project.MSG_WARN);
+            super.zipFile(file, zOut, vPath);
         }
     }
 
+    /**
+     * Make sure we don't think we already have a MANIFEST next time this task
+     * gets executed.
+     */
+    protected void cleanUp() {
+        manifestAdded = false;
+        super.cleanUp();
+    }
 }

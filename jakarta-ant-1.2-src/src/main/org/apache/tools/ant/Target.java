@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written
  *    permission, please contact apache@apache.org.
@@ -102,6 +102,17 @@ public class Target {
         tasks.addElement(task);
     }
 
+	/** 
+	 * Get the current set of tasks to be executed by this target.
+	 * 
+     * @return The current set of tasks.
+	 */
+    public Task[] getTasks() {
+        Task[] retval = new Task[tasks.size()];
+        tasks.copyInto(retval);
+        return retval;
+    }
+
     public void addDependency(String dependency) {
         dependencies.addElement(dependency);
     }
@@ -139,9 +150,9 @@ public class Target {
                 try {
                     project.fireTaskStarted(task);
                     task.maybeConfigure();
-               	    task.execute();
+                    task.execute();
                     project.fireTaskFinished(task, null);
-		}
+                }
                 catch(RuntimeException exc) {
                     if (exc instanceof BuildException) {
                         BuildException be = (BuildException) exc;

@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written
  *    permission, please contact apache@apache.org.
@@ -79,4 +79,11 @@ public class TarTest extends TaskdefsTest {
         expectBuildException("test3", "required argument not specified");
     }
 
+    public void test4() { 
+        expectBuildException("test4", "tar cannot include itself");
+    }
+
+    public void tearDown() {
+        executeTarget("cleanup");
+    }
 }

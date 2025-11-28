@@ -1,7 +1,7 @@
 /*
  * The Apache Software License, Version 1.1
  *
- * Copyright (c) 1999 The Apache Software Foundation.  All rights
+ * Copyright (c) 1999-2001 The Apache Software Foundation.  All rights
  * reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written
  *    permission, please contact apache@apache.org.
@@ -129,9 +129,20 @@ public class Available extends Task {
             this.loader = new AntClassLoader(project, classpath, false);
         }
 
-        if ((classname != null) && !checkClass(classname)) return;
-        if ((file != null) && !checkFile(file)) return;
-        if ((resource != null) && !checkResource(resource)) return;
+        if ((classname != null) && !checkClass(classname)) {
+            log("Unable to load class " + classname + " to set property " + property, Project.MSG_VERBOSE);
+            return;
+        }
+        
+        if ((file != null) && !checkFile(file)) {
+            log("Unable to find file " + file + " to set property " + property, Project.MSG_VERBOSE);
+            return;
+        }
+        
+        if ((resource != null) && !checkResource(resource)) {
+            log("Unable to load resource " + resource + " to set property " + property, Project.MSG_VERBOSE);
+            return;
+        }
 
         this.project.setProperty(property, value);
     }
@@ -144,7 +155,13 @@ public class Available extends Task {
         if (loader != null) {
             return (loader.getResourceAsStream(resource) != null);
         } else {
-            return (this.getClass().getResourceAsStream(resource) != null);
+            ClassLoader cL = this.getClass().getClassLoader();
+            if (cL != null) {
+                return (cL.getResourceAsStream(resource) != null);
+            } else {
+                return 
+                    (ClassLoader.getSystemResourceAsStream(resource) != null);
+            }
         }
     }
 
@@ -164,7 +181,8 @@ public class Available extends Task {
             }
             return true;
         } catch (ClassNotFoundException e) {
-            log(e.toString(), Project.MSG_VERBOSE);
+            return false;
+        } catch (NoClassDefFoundError e) {
             return false;
         }
     }

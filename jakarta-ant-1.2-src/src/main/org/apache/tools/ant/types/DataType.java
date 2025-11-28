@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written
  *    permission, please contact apache@apache.org.
@@ -54,10 +54,10 @@
 
 package org.apache.tools.ant.types;
 
-import org.apache.tools.ant.BuildException;
-import org.apache.tools.ant.Project;
 
 import java.util.Stack;
+import org.apache.tools.ant.BuildException;
+import org.apache.tools.ant.Project;
 
 /**
  * Base class for those classes that can appear inside the build file
@@ -69,7 +69,7 @@ import java.util.Stack;
  * nested inside elements of the same type (i.e. &lt;patternset&gt;
  * but not &lt;path&gt;).</p>
  *
- * @author <a href="mailto:stefan.bodewig@megabit.net">Stefan Bodewig</a> 
+ * @author <a href="mailto:stefan.bodewig@epost.de">Stefan Bodewig</a> 
  */
 public abstract class DataType {
     /**
@@ -95,14 +95,14 @@ public abstract class DataType {
      * in commenting what we are doing.  
      */
     public void setDescription( String desc ) {
-	description=desc;
+        description=desc;
     }
 
     /**
      * Return the description for the current data type.
      */
     public String getDescription() {
-	return description;
+        return description;
     }
 
     /**
@@ -166,7 +166,8 @@ public abstract class DataType {
      * only attribute if it is set.  
      */
     protected BuildException tooManyAttributes() {
-        return new BuildException("You must not specify more than one attribute when using refid");
+        return new BuildException( "You must not specify more than one attribute" +
+                                   " when using refid" );
     }
 
     /**

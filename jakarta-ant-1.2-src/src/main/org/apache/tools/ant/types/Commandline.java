@@ -23,7 +23,7 @@
  *    Alternately, this acknowlegement may appear in the software itself,
  *    if and wherever such third-party acknowlegements normally appear.
  *
- * 4. The names "The Jakarta Project", "Tomcat", and "Apache Software
+ * 4. The names "The Jakarta Project", "Ant", and "Apache Software
  *    Foundation" must not be used to endorse or promote products derived
  *    from this software without prior written permission. For written
  *    permission, please contact apache@apache.org.
@@ -156,6 +156,38 @@ public class Commandline implements Cloneable {
         }
     }
 
+    /**
+     * Class to keep track of the position of an Argument.
+     */
+    // <p>This class is there to support the srcfile and targetfile
+    // elements of &lt;execon&gt; and &lt;transform&gt; - don't know
+    // whether there might be additional use cases.</p> --SB
+    public class Marker {
+
+        private int position;
+        private int realPos = -1;
+
+        Marker(int position) {
+            this.position = position;
+        }
+
+        /**
+         * Return the number of arguments that preceeded this marker.
+         *
+         * <p>The name of the executable - if set - is counted as the
+         * very first argument.</p>
+         */
+        public int getPosition() {
+            if (realPos == -1) {
+                realPos = (executable == null ? 0 : 1);
+                for (int i=0; i<position; i++) {
+                    Argument arg = (Argument) arguments.elementAt(i);
+                    realPos += arg.getParts().length;
+                }
+            }
+            return realPos;
+        }
+    }
 
     /**
      * Creates an argument object.
@@ -174,7 +206,8 @@ public class Commandline implements Cloneable {
      */
     public void setExecutable(String executable) {
         if (executable == null || executable.length() == 0) return;
-        this.executable = executable;
+        this.executable = executable.replace('/', File.separatorChar)
+            .replace('\\', File.separatorChar);
     }
 
 
@@ -352,4 +385,14 @@ public class Commandline implements Cloneable {
         arguments.removeAllElements();
     }
         
+    /**
+     * Return a marker.
+     *
+     * <p>This marker can be used to locate a position on the
+     * commandline - to insert something for example - when all
+     * parameters have been set.</p>
+     */
+    public Marker createMarker() {
+        return new Marker(arguments.size());
+    }
 }
